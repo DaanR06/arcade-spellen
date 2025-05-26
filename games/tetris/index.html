@@ -469,7 +469,9 @@
             }
 
             draw();
-            gameLoop = requestAnimationFrame(update);
+            if (!gameLoop) {
+                gameLoop = requestAnimationFrame(update);
+            }
         }
 
         function gameOver() {
@@ -498,6 +500,7 @@
             // Start de game loop
             if (gameLoop) {
                 cancelAnimationFrame(gameLoop);
+                gameLoop = null;
             }
             gameLoop = requestAnimationFrame(update);
         }
