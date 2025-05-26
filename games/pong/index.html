@@ -345,7 +345,7 @@
             player.speed = 0;
         }
 
-        // Event listeners
+        // Event listeners voor toetsenbord
         document.addEventListener('keydown', (event) => {
             if (event.key === 'ArrowUp') {
                 movePaddle('up');
@@ -359,6 +359,23 @@
                 stopPaddle();
             }
         });
+
+        // Event listeners voor muis
+        canvas.addEventListener('mousemove', (event) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseY = event.clientY - rect.top;
+            player.y = mouseY - paddleHeight / 2;
+            player.y = Math.max(0, Math.min(canvas.height - paddleHeight, player.y));
+        });
+
+        // Touch controls voor mobiel
+        canvas.addEventListener('touchmove', (event) => {
+            event.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const touchY = event.touches[0].clientY - rect.top;
+            player.y = touchY - paddleHeight / 2;
+            player.y = Math.max(0, Math.min(canvas.height - paddleHeight, player.y));
+        }, { passive: false });
 
         // Handle window resize
         window.addEventListener('resize', () => {

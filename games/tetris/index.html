@@ -469,7 +469,7 @@
             }
 
             draw();
-            requestAnimationFrame(update);
+            gameLoop = requestAnimationFrame(update);
         }
 
         function gameOver() {
@@ -494,6 +494,11 @@
             updateScore();
             playerReset();
             lastTime = 0;
+            
+            // Start de game loop
+            if (gameLoop) {
+                cancelAnimationFrame(gameLoop);
+            }
             gameLoop = requestAnimationFrame(update);
         }
 
