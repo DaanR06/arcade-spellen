@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tetris</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #1a1a1a;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+
+        canvas {
+            border: 2px solid #4ecdc4;
+            margin: 20px;
+        }
+
+        .game-info {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .score, .level {
+            font-size: 24px;
+        }
+
+        .controls {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        button {
+            background-color: #4ecdc4;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            margin: 0 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45b7af;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-info">
+        <div class="score">Score: <span id="score">0</span></div>
+        <div class="level">Level: <span id="level">1</span></div>
+    </div>
+    <canvas id="gameCanvas" width="300" height="600"></canvas>
+    <div class="controls">
+        <button onclick="window.location.href='../../index.html'">Terug naar Menu</button>
+        <button onclick="resetGame()">Opnieuw Spelen</button>
+    </div>
+    <div class="instructions">
+        GEBRUIK PIJLTJES OM TE BEWEGEN<br>
+        KLIK OP HET BLOK OM TE DRAAIEN<br>
+        VERWIJDER ZOVEEL MOGELIJK RIJEN!
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const levelElement = document.getElementById('level');
+
+        const BLOCK_SIZE = 30;
+        const COLS = 10;
+        const ROWS = 20;
+        let score = 0;
+        let level = 1;
+        let gameLoop;
+        let gameOver = false;
+
+        // Tetromino vormen
+        const SHAPES = [
+            [[1, 1, 1, 1]], // I
+            [[1, 1], [1, 1]], // O
+            [[1, 1, 1], [0, 1, 0]], // T
+            [[1, 1, 1], [1, 0, 0]], // L
+            [[1, 1, 1], [0, 0, 1]], // J
+            [[1, 1, 0], [0, 1, 1]], // S
+            [[0, 1, 1], [1, 1, 0]]  // Z
+        ];
+
+        // Kleuren voor de blokken
+        const COLORS = [
+            '#FF0D72', '#0DC2FF', '#0DFF72',
+            '#F538FF', '#FF8E0D', '#FFE138',
+            '#3877FF'
+        ];
+
+        let board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
+        let currentPiece = null;
+        let currentPiecePosition = { x: 0, y: 0 };
+
+        class Piece {
+            constructor(shape, color) {
+                this.shape = shape;
+                this.color = color;
+            }
+        }
+
+        function createNewPiece() {
+            const randomIndex = Math.floor(Math.random() * SHAPES.length);
+            return new Piece(SHAPES[randomIndex], COLORS[randomIndex]);
+        }
+
+        function drawBlock(x, y, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE - 1, BLOCK_SIZE - 1);
+        }
+
+        function drawBoard() {
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Teken het bord
+            for (let y = 0; y < ROWS; y++) {
+                for (let x = 0; x < COLS; x++) {
+                    if (board[y][x]) {
+                        drawBlock(x, y, board[y][x]);
+                    }
+                }
+            }
+
+            // Teken het huidige stuk
+            if (currentPiece) {
+                currentPiece.shape.forEach((row, y) => {
+                    row.forEach((value, x) => {
+                        if (value) {
+                            drawBlock(
+                                currentPiecePosition.x + x,
+                                currentPiecePosition.y + y,
+                                currentPiece.color
+                            );
+                        }
+                    });
+                });
+            }
+        }
+
+        function collision() {
+            return currentPiece.shape.some((row, y) => {
+                return row.some((value, x) => {
+                    if (!value) return false;
+                    const newX = currentPiecePosition.x + x;
+                    const newY = currentPiecePosition.y + y;
+                    return (
+                        newX < 0 ||
+                        newX >= COLS ||
+                        newY >= ROWS ||
+                        (newY >= 0 && board[newY][newX])
+                    );
+                });
+            });
+        }
+
+        function merge() {
+            currentPiece.shape.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value) {
+                        board[currentPiecePosition.y + y][currentPiecePosition.x + x] = currentPiece.color;
+                    }
+                });
+            });
+        }
+
+        function clearLines() {
+            let linesCleared = 0;
+            for (let y = ROWS - 1; y >= 0; y--) {
+                if (board[y].every(value => value !== 0)) {
+                    board.splice(y, 1);
+                    board.unshift(Array(COLS).fill(0));
+                    linesCleared++;
+                    y++;
+                }
+            }
+            if (linesCleared > 0) {
+                score += linesCleared * 100 * level;
+                scoreElement.textContent = score;
+                if (score >= level * 1000) {
+                    level++;
+                    levelElement.textContent = level;
+                }
+            }
+        }
+
+        function rotate() {
+            const rotated = currentPiece.shape[0].map((_, i) =>
+                currentPiece.shape.map(row => row[i]).reverse()
+            );
+            const previousShape = currentPiece.shape;
+            currentPiece.shape = rotated;
+            if (collision()) {
+                currentPiece.shape = previousShape;
+            }
+        }
+
+        function moveDown() {
+            currentPiecePosition.y++;
+            if (collision()) {
+                currentPiecePosition.y--;
+                merge();
+                clearLines();
+                currentPiece = createNewPiece();
+                currentPiecePosition = {
+                    x: Math.floor(COLS / 2) - Math.floor(currentPiece.shape[0].length / 2),
+                    y: 0
+                };
+                if (collision()) {
+                    gameOver = true;
+                    clearInterval(gameLoop);
+                    alert(`Game Over! Je score is: ${score}`);
+                }
+            }
+        }
+
+        function moveLeft() {
+            currentPiecePosition.x--;
+            if (collision()) {
+                currentPiecePosition.x++;
+            }
+        }
+
+        function moveRight() {
+            currentPiecePosition.x++;
+            if (collision()) {
+                currentPiecePosition.x--;
+            }
+        }
+
+        function resetGame() {
+            board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
+            score = 0;
+            level = 1;
+            scoreElement.textContent = score;
+            levelElement.textContent = level;
+            gameOver = false;
+            currentPiece = createNewPiece();
+            currentPiecePosition = {
+                x: Math.floor(COLS / 2) - Math.floor(currentPiece.shape[0].length / 2),
+                y: 0
+            };
+            if (gameLoop) clearInterval(gameLoop);
+            gameLoop = setInterval(() => {
+                moveDown();
+                drawBoard();
+            }, 1000 / level);
+        }
+
+        // Voeg muisbesturing toe voor rotatie
+        canvas.addEventListener('click', (event) => {
+            if (gameOver) return;
+            rotate();
+            drawBoard();
+        });
+
+        // Verwijder de oude rotatie besturing uit de keydown event listener
+        document.addEventListener('keydown', event => {
+            if (gameOver) return;
+            switch (event.key) {
+                case 'ArrowLeft':
+                    moveLeft();
+                    break;
+                case 'ArrowRight':
+                    moveRight();
+                    break;
+                case 'ArrowDown':
+                    moveDown();
+                    break;
+            }
+            drawBoard();
+        });
+
+        // Start het spel
+        resetGame();
+    </script>
+</body>
+</html> 

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pong</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #000000;
+            color: #ff0000;
+            font-family: 'Press Start 2P', cursive;
+        }
+
+        canvas {
+            border: 2px solid #ff0000;
+            margin: 20px;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.3);
+        }
+
+        .score {
+            font-size: 24px;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px #ff0000;
+        }
+
+        .controls {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        button {
+            background-color: #000000;
+            border: 2px solid #ff0000;
+            color: #ff0000;
+            padding: 10px 20px;
+            margin: 0 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            background-color: #ff0000;
+            color: #000000;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+        }
+
+        .instructions {
+            color: #ff6666;
+            font-size: 12px;
+            margin-top: 20px;
+            text-align: center;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="score">SPELER: <span id="playerScore">0</span> - COMPUTER: <span id="computerScore">0</span></div>
+    <canvas id="gameCanvas" width="1200" height="600"></canvas>
+    <div class="instructions">
+        GEBRUIK JE MUIS OM HET BALKJE TE BEWEGEN<br>
+        EERSTE DIE 5 PUNTEN HEEFT WINT!
+    </div>
+    <div class="controls">
+        <button onclick="window.location.href='../../index.html'">TERUG NAAR MENU</button>
+        <button onclick="resetGame()">OPNIEUW SPELEN</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const playerScoreElement = document.getElementById('playerScore');
+        const computerScoreElement = document.getElementById('computerScore');
+
+        const PADDLE_HEIGHT = 120;
+        const PADDLE_WIDTH = 15;
+        const BALL_SIZE = 15;
+        const PADDLE_SPEED = 10;
+        const BALL_SPEED = 9;
+
+        let playerScore = 0;
+        let computerScore = 0;
+        let gameLoop;
+
+        const ball = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            dx: BALL_SPEED,
+            dy: BALL_SPEED
+        };
+
+        const player = {
+            y: canvas.height / 2 - PADDLE_HEIGHT / 2,
+            score: 0
+        };
+
+        const computer = {
+            y: canvas.height / 2 - PADDLE_HEIGHT / 2,
+            score: 0
+        };
+
+        function drawRect(x, y, width, height, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y, width, height);
+        }
+
+        function drawBall() {
+            drawRect(ball.x - BALL_SIZE / 2, ball.y - BALL_SIZE / 2, BALL_SIZE, BALL_SIZE, '#ff0000');
+        }
+
+        function drawPaddles() {
+            // Speler paddle
+            drawRect(0, player.y, PADDLE_WIDTH, PADDLE_HEIGHT, '#ff0000');
+            // Computer paddle
+            drawRect(canvas.width - PADDLE_WIDTH, computer.y, PADDLE_WIDTH, PADDLE_HEIGHT, '#ff0000');
+        }
+
+        function movePaddle(paddle, direction) {
+            if (direction === 'up' && paddle.y > 0) {
+                paddle.y -= PADDLE_SPEED;
+            }
+            if (direction === 'down' && paddle.y < canvas.height - PADDLE_HEIGHT) {
+                paddle.y += PADDLE_SPEED;
+            }
+        }
+
+        function moveComputer() {
+            const computerCenter = computer.y + PADDLE_HEIGHT / 2;
+            const ballCenter = ball.y;
+            const speed = 3;
+
+            if (computerCenter < ballCenter - 35) {
+                computer.y += speed;
+            } else if (computerCenter > ballCenter + 35) {
+                computer.y -= speed;
+            }
+        }
+
+        function resetBall() {
+            ball.x = canvas.width / 2;
+            ball.y = canvas.height / 2;
+            ball.dx = -ball.dx;
+            ball.dy = Math.random() * 10 - 5;
+        }
+
+        function updateScore() {
+            playerScoreElement.textContent = player.score;
+            computerScoreElement.textContent = computer.score;
+
+            if (player.score >= 5 || computer.score >= 5) {
+                clearInterval(gameLoop);
+                const winner = player.score >= 5 ? 'SPELER' : 'COMPUTER';
+                alert(`${winner} WINT!`);
+                resetGame();
+            }
+        }
+
+        function draw() {
+            // Clear canvas
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw center line
+            ctx.setLineDash([10, 10]);
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2, 0);
+            ctx.lineTo(canvas.width / 2, canvas.height);
+            ctx.strokeStyle = '#ff0000';
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            drawPaddles();
+            drawBall();
+
+            // Move ball
+            ball.x += ball.dx;
+            ball.y += ball.dy;
+
+            // Ball collision with top and bottom
+            if (ball.y - BALL_SIZE / 2 <= 0 || ball.y + BALL_SIZE / 2 >= canvas.height) {
+                ball.dy = -ball.dy;
+            }
+
+            // Ball collision with paddles
+            if (ball.dx < 0) {
+                if (ball.x - BALL_SIZE / 2 <= PADDLE_WIDTH &&
+                    ball.y >= player.y &&
+                    ball.y <= player.y + PADDLE_HEIGHT) {
+                    ball.dx = -ball.dx;
+                    ball.dy = (ball.y - (player.y + PADDLE_HEIGHT / 2)) * 0.2;
+                }
+            } else {
+                if (ball.x + BALL_SIZE / 2 >= canvas.width - PADDLE_WIDTH &&
+                    ball.y >= computer.y &&
+                    ball.y <= computer.y + PADDLE_HEIGHT) {
+                    ball.dx = -ball.dx;
+                    ball.dy = (ball.y - (computer.y + PADDLE_HEIGHT / 2)) * 0.2;
+                }
+            }
+
+            // Score points
+            if (ball.x - BALL_SIZE / 2 <= 0) {
+                computer.score++;
+                updateScore();
+                resetBall();
+            } else if (ball.x + BALL_SIZE / 2 >= canvas.width) {
+                player.score++;
+                updateScore();
+                resetBall();
+            }
+
+            moveComputer();
+        }
+
+        function resetGame() {
+            player.score = 0;
+            computer.score = 0;
+            player.y = canvas.height / 2 - PADDLE_HEIGHT / 2;
+            computer.y = canvas.height / 2 - PADDLE_HEIGHT / 2;
+            resetBall();
+            updateScore();
+            if (gameLoop) clearInterval(gameLoop);
+            gameLoop = setInterval(draw, 1000 / 60);
+        }
+
+        // Verwijder de oude toetsenbord event listener en voeg muisbesturing toe
+        canvas.addEventListener('mousemove', (event) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseY = event.clientY - rect.top;
+            
+            // Bereken de nieuwe positie van de paddle
+            let newY = mouseY - PADDLE_HEIGHT / 2;
+            
+            // Zorg ervoor dat de paddle binnen het canvas blijft
+            if (newY < 0) newY = 0;
+            if (newY > canvas.height - PADDLE_HEIGHT) newY = canvas.height - PADDLE_HEIGHT;
+            
+            player.y = newY;
+        });
+
+        // Start het spel
+        resetGame();
+    </script>
+</body>
+</html> 
