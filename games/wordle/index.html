@@ -521,11 +521,11 @@
         }
 
         // Event listeners
-        document.addEventListener('keydown', (event) => {
+        document.addEventListener('keydown', async (event) => {
             if (isGameOver) return;
 
             if (event.key === 'Enter') {
-                submitGuess();
+                await submitGuess();
             } else if (event.key === 'Backspace') {
                 deleteLetter();
             } else if (/^[a-zA-Z]$/.test(event.key)) {
@@ -534,12 +534,12 @@
         });
 
         document.querySelectorAll('.key').forEach(key => {
-            key.addEventListener('click', () => {
+            key.addEventListener('click', async () => {
                 if (isGameOver) return;
 
                 const letter = key.dataset.key;
                 if (letter === 'enter') {
-                    submitGuess();
+                    await submitGuess();
                 } else if (letter === 'backspace') {
                     deleteLetter();
                 } else {
