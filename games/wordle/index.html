@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wordle</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #000;
+            color: #fff;
+            font-family: 'Press Start 2P', cursive;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        h1 {
+            color: #ff0000;
+            text-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+            margin-bottom: 20px;
+            font-size: clamp(24px, 5vw, 48px);
+            text-align: center;
+        }
+
+        .game-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-rows: repeat(6, 1fr);
+            gap: 5px;
+            margin: 20px 0;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 5px;
+        }
+
+        .tile {
+            width: 100%;
+            aspect-ratio: 1;
+            border: 2px solid #3a3a3c;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: clamp(16px, 4vw, 32px);
+            text-transform: uppercase;
+            font-weight: bold;
+            background-color: #121213;
+            color: #fff;
+            transition: all 0.2s;
+        }
+
+        .tile.correct {
+            background-color: #538d4e;
+            border-color: #538d4e;
+        }
+
+        .tile.present {
+            background-color: #b59f3b;
+            border-color: #b59f3b;
+        }
+
+        .tile.absent {
+            background-color: #3a3a3c;
+            border-color: #3a3a3c;
+        }
+
+        .tile.filled {
+            border-color: #565758;
+        }
+
+        .keyboard {
+            display: grid;
+            grid-template-rows: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 20px;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .keyboard-row {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .key {
+            min-width: 30px;
+            height: 58px;
+            border-radius: 4px;
+            border: none;
+            background-color: #818384;
+            color: #fff;
+            font-family: 'Press Start 2P', cursive;
+            font-size: clamp(10px, 2vw, 14px);
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0 8px;
+            transition: all 0.2s;
+        }
+
+        .key:hover {
+            background-color: #9e9e9e;
+        }
+
+        .key.correct {
+            background-color: #538d4e;
+        }
+
+        .key.present {
+            background-color: #b59f3b;
+        }
+
+        .key.absent {
+            background-color: #3a3a3c;
+        }
+
+        .key.wide {
+            min-width: 65px;
+        }
+
+        .game-info {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .game-info div {
+            background-color: #1a1a1a;
+            padding: 10px 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(255, 0, 0, 0.3);
+            font-size: clamp(12px, 3vw, 16px);
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        button {
+            background-color: #1a1a1a;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', cursive;
+            font-size: clamp(10px, 2vw, 12px);
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background-color: #2a2a2a;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 0, 0, 0.2);
+        }
+
+        .back-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            text-decoration: none;
+            color: #fff;
+            background-color: #1a1a1a;
+            padding: 10px 20px;
+            border-radius: 5px;
+            transition: all 0.2s;
+            font-size: clamp(10px, 2vw, 12px);
+        }
+
+        .back-button:hover {
+            background-color: #2a2a2a;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 0, 0, 0.2);
+        }
+
+        .instructions {
+            margin-top: 20px;
+            text-align: center;
+            font-size: clamp(10px, 2vw, 12px);
+            color: #ccc;
+            max-width: 600px;
+            padding: 0 20px;
+        }
+
+        .message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            display: none;
+            z-index: 1000;
+        }
+
+        .message.show {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .back-button {
+                position: relative;
+                top: 0;
+                left: 0;
+                margin-bottom: 20px;
+            }
+
+            .game-info {
+                gap: 10px;
+            }
+
+            .game-info div {
+                padding: 8px 16px;
+            }
+
+            .controls {
+                gap: 8px;
+            }
+
+            button {
+                padding: 8px 16px;
+            }
+
+            .key {
+                min-width: 25px;
+                height: 50px;
+                font-size: 12px;
+            }
+
+            .key.wide {
+                min-width: 50px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="../../index.html" class="back-button">Terug</a>
+    <h1>Wordle</h1>
+    <div class="game-info">
+        <div>Pogingen: <span id="attempts">0</span>/6</div>
+        <div>Woord: <span id="wordLength">5</span> letters</div>
+    </div>
+    <div class="game-container">
+        <div class="grid" id="grid"></div>
+        <div class="keyboard">
+            <div class="keyboard-row">
+                <button class="key" data-key="q">Q</button>
+                <button class="key" data-key="w">W</button>
+                <button class="key" data-key="e">E</button>
+                <button class="key" data-key="r">R</button>
+                <button class="key" data-key="t">T</button>
+                <button class="key" data-key="y">Y</button>
+                <button class="key" data-key="u">U</button>
+                <button class="key" data-key="i">I</button>
+                <button class="key" data-key="o">O</button>
+                <button class="key" data-key="p">P</button>
+            </div>
+            <div class="keyboard-row">
+                <button class="key" data-key="a">A</button>
+                <button class="key" data-key="s">S</button>
+                <button class="key" data-key="d">D</button>
+                <button class="key" data-key="f">F</button>
+                <button class="key" data-key="g">G</button>
+                <button class="key" data-key="h">H</button>
+                <button class="key" data-key="j">J</button>
+                <button class="key" data-key="k">K</button>
+                <button class="key" data-key="l">L</button>
+            </div>
+            <div class="keyboard-row">
+                <button class="key wide" data-key="enter">Enter</button>
+                <button class="key" data-key="z">Z</button>
+                <button class="key" data-key="x">X</button>
+                <button class="key" data-key="c">C</button>
+                <button class="key" data-key="v">V</button>
+                <button class="key" data-key="b">B</button>
+                <button class="key" data-key="n">N</button>
+                <button class="key" data-key="m">M</button>
+                <button class="key wide" data-key="backspace">⌫</button>
+            </div>
+        </div>
+    </div>
+    <div class="controls">
+        <button onclick="startNewGame()">Nieuw Spel</button>
+    </div>
+    <div class="instructions">
+        <p>Raad het woord in 6 pogingen. Elke poging moet een geldig woord zijn.</p>
+        <p>Groen = letter op juiste plek, Geel = letter in woord maar verkeerde plek, Grijs = letter niet in woord</p>
+    </div>
+    <div class="message" id="message"></div>
+
+    <script>
+        // Nederlandse woordenlijst (5 letters)
+        const words = [
+            'APPEL', 'BLOEM', 'DAGEN', 'EERST', 'FIETS', 'GROEN', 'HONDE', 'IJZER', 'JAREN',
+            'KAMER', 'LAMPE', 'MOLEN', 'NACHT', 'OLIEF', 'PAARD', 'QUOTE', 'RADIO', 'STOEL',
+            'TASJE', 'UITJE', 'VADER', 'WATER', 'XENON', 'YACHT', 'ZONNE'
+        ];
+
+        let currentWord = '';
+        let currentRow = 0;
+        let currentTile = 0;
+        let isGameOver = false;
+        let attempts = 0;
+
+        function initGame() {
+            // Reset game state
+            currentRow = 0;
+            currentTile = 0;
+            isGameOver = false;
+            attempts = 0;
+            document.getElementById('attempts').textContent = attempts;
+
+            // Clear grid
+            const grid = document.getElementById('grid');
+            grid.innerHTML = '';
+            for (let i = 0; i < 6; i++) {
+                const row = document.createElement('div');
+                row.className = 'row';
+                for (let j = 0; j < 5; j++) {
+                    const tile = document.createElement('div');
+                    tile.className = 'tile';
+                    row.appendChild(tile);
+                }
+                grid.appendChild(row);
+            }
+
+            // Reset keyboard
+            document.querySelectorAll('.key').forEach(key => {
+                key.className = 'key' + (key.classList.contains('wide') ? ' wide' : '');
+            });
+
+            // Select random word
+            currentWord = words[Math.floor(Math.random() * words.length)];
+        }
+
+        function updateTile(letter) {
+            if (currentTile < 5 && currentRow < 6) {
+                const row = document.querySelectorAll('.row')[currentRow];
+                const tile = row.children[currentTile];
+                tile.textContent = letter;
+                tile.classList.add('filled');
+                currentTile++;
+            }
+        }
+
+        function deleteLetter() {
+            if (currentTile > 0) {
+                currentTile--;
+                const row = document.querySelectorAll('.row')[currentRow];
+                const tile = row.children[currentTile];
+                tile.textContent = '';
+                tile.classList.remove('filled');
+            }
+        }
+
+        function submitGuess() {
+            if (currentTile !== 5) return;
+
+            const row = document.querySelectorAll('.row')[currentRow];
+            let guess = '';
+            for (let i = 0; i < 5; i++) {
+                guess += row.children[i].textContent;
+            }
+
+            if (!words.includes(guess)) {
+                showMessage('Geen geldig woord!');
+                return;
+            }
+
+            const result = checkGuess(guess);
+            updateRow(result);
+            updateKeyboard(result);
+            attempts++;
+            document.getElementById('attempts').textContent = attempts;
+
+            if (guess === currentWord) {
+                isGameOver = true;
+                showMessage('Gewonnen! 🎉');
+            } else if (currentRow === 5) {
+                isGameOver = true;
+                showMessage(`Game Over! Het woord was: ${currentWord}`);
+            } else {
+                currentRow++;
+                currentTile = 0;
+            }
+        }
+
+        function checkGuess(guess) {
+            const result = [];
+            const wordArray = currentWord.split('');
+            const guessArray = guess.split('');
+
+            // Check for correct letters
+            for (let i = 0; i < 5; i++) {
+                if (guessArray[i] === wordArray[i]) {
+                    result[i] = 'correct';
+                    wordArray[i] = null;
+                }
+            }
+
+            // Check for present letters
+            for (let i = 0; i < 5; i++) {
+                if (result[i] === 'correct') continue;
+                const index = wordArray.indexOf(guessArray[i]);
+                if (index !== -1) {
+                    result[i] = 'present';
+                    wordArray[index] = null;
+                } else {
+                    result[i] = 'absent';
+                }
+            }
+
+            return result;
+        }
+
+        function updateRow(result) {
+            const row = document.querySelectorAll('.row')[currentRow];
+            for (let i = 0; i < 5; i++) {
+                const tile = row.children[i];
+                tile.classList.add(result[i]);
+            }
+        }
+
+        function updateKeyboard(result) {
+            const row = document.querySelectorAll('.row')[currentRow];
+            for (let i = 0; i < 5; i++) {
+                const letter = row.children[i].textContent;
+                const key = document.querySelector(`.key[data-key="${letter.toLowerCase()}"]`);
+                if (key) {
+                    if (result[i] === 'correct') {
+                        key.classList.add('correct');
+                    } else if (result[i] === 'present' && !key.classList.contains('correct')) {
+                        key.classList.add('present');
+                    } else if (result[i] === 'absent' && !key.classList.contains('correct') && !key.classList.contains('present')) {
+                        key.classList.add('absent');
+                    }
+                }
+            }
+        }
+
+        function showMessage(text) {
+            const message = document.getElementById('message');
+            message.textContent = text;
+            message.classList.add('show');
+            setTimeout(() => {
+                message.classList.remove('show');
+            }, 2000);
+        }
+
+        function startNewGame() {
+            initGame();
+        }
+
+        // Event listeners
+        document.addEventListener('keydown', (event) => {
+            if (isGameOver) return;
+
+            if (event.key === 'Enter') {
+                submitGuess();
+            } else if (event.key === 'Backspace') {
+                deleteLetter();
+            } else if (/^[a-zA-Z]$/.test(event.key)) {
+                updateTile(event.key.toUpperCase());
+            }
+        });
+
+        document.querySelectorAll('.key').forEach(key => {
+            key.addEventListener('click', () => {
+                if (isGameOver) return;
+
+                const letter = key.dataset.key;
+                if (letter === 'enter') {
+                    submitGuess();
+                } else if (letter === 'backspace') {
+                    deleteLetter();
+                } else {
+                    updateTile(letter.toUpperCase());
+                }
+            });
+        });
+
+        // Start game
+        initGame();
+    </script>
+</body>
+</html> 
