@@ -321,8 +321,18 @@
     <div class="message" id="message"></div>
 
     <script>
-        // English word list (5 letters)
-        const words = [
+        // API endpoint voor woordenvalidatie
+        const DICTIONARY_API = 'https://api.dictionaryapi.dev/api/v2/entries/en/';
+
+        let currentWord = '';
+        let currentRow = 0;
+        let currentTile = 0;
+        let isGameOver = false;
+        let attempts = 0;
+        let validWords = new Set();
+
+        // Laad een lijst met veel voorkomende 5-letter woorden
+        const commonWords = [
             'APPLE', 'BEACH', 'CLOUD', 'DREAM', 'EARTH', 'FLAME', 'GHOST', 'HEART', 'IVORY',
             'JUICE', 'KNIFE', 'LIGHT', 'MONEY', 'NIGHT', 'OCEAN', 'PEACE', 'QUEEN', 'RADIO',
             'SMILE', 'TIGER', 'UNITY', 'VOICE', 'WATER', 'XEROX', 'YOUTH', 'ZEBRA', 'BRAIN',
@@ -333,11 +343,28 @@
             'PEACE', 'QUIET', 'RADIO', 'SMILE', 'TRUTH', 'UNITY', 'VITAL', 'WISDOM', 'YOUTH'
         ];
 
-        let currentWord = '';
-        let currentRow = 0;
-        let currentTile = 0;
-        let isGameOver = false;
-        let attempts = 0;
+        // Voeg veel voorkomende woorden toe aan de set
+        commonWords.forEach(word => validWords.add(word));
+
+        async function isValidWord(word) {
+            // Controleer eerst of het woord al in onze set zit
+            if (validWords.has(word)) {
+                return true;
+            }
+
+            try {
+                const response = await fetch(DICTIONARY_API + word.toLowerCase());
+                if (response.ok) {
+                    // Voeg het nieuwe woord toe aan onze set
+                    validWords.add(word);
+                    return true;
+                }
+                return false;
+            } catch (error) {
+                console.error('Error checking word:', error);
+                return false;
+            }
+        }
 
         function initGame() {
             // Reset game state
@@ -366,8 +393,8 @@
                 key.className = 'key' + (key.classList.contains('wide') ? ' wide' : '');
             });
 
-            // Select random word
-            currentWord = words[Math.floor(Math.random() * words.length)];
+            // Select random word from common words
+            currentWord = commonWords[Math.floor(Math.random() * commonWords.length)];
         }
 
         function updateTile(letter) {
@@ -390,7 +417,7 @@
             }
         }
 
-        function submitGuess() {
+        async function submitGuess() {
             if (currentTile !== 5) return;
 
             const row = document.querySelectorAll('.row')[currentRow];
@@ -399,7 +426,12 @@
                 guess += row.children[i].textContent;
             }
 
-            if (!words.includes(guess)) {
+            // Toon laad-indicator
+            showMessage('Checking word...');
+
+            // Controleer of het woord geldig is
+            const isValid = await isValidWord(guess);
+            if (!isValid) {
                 showMessage('Not a valid word!');
                 return;
             }
