@@ -62,18 +62,18 @@
         }
 
         .tile.correct {
-            background-color: #538d4e;
-            border-color: #538d4e;
+            background-color: #4CAF50;
+            border-color: #4CAF50;
         }
 
         .tile.present {
-            background-color: #b59f3b;
-            border-color: #b59f3b;
+            background-color: #FF9800;
+            border-color: #FF9800;
         }
 
         .tile.absent {
-            background-color: #3a3a3c;
-            border-color: #3a3a3c;
+            background-color: #F44336;
+            border-color: #F44336;
         }
 
         .tile.filled {
@@ -117,15 +117,15 @@
         }
 
         .key.correct {
-            background-color: #538d4e;
+            background-color: #4CAF50;
         }
 
         .key.present {
-            background-color: #b59f3b;
+            background-color: #FF9800;
         }
 
         .key.absent {
-            background-color: #3a3a3c;
+            background-color: #F44336;
         }
 
         .key.wide {
@@ -315,17 +315,22 @@
         <button onclick="startNewGame()">Nieuw Spel</button>
     </div>
     <div class="instructions">
-        <p>Raad het woord in 6 pogingen. Elke poging moet een geldig woord zijn.</p>
-        <p>Groen = letter op juiste plek, Geel = letter in woord maar verkeerde plek, Grijs = letter niet in woord</p>
+        <p>Guess the word in 6 attempts. Each guess must be a valid word.</p>
+        <p>Green = letter in correct position, Orange = letter in word but wrong position, Red = letter not in word</p>
     </div>
     <div class="message" id="message"></div>
 
     <script>
-        // Nederlandse woordenlijst (5 letters)
+        // English word list (5 letters)
         const words = [
-            'APPEL', 'BLOEM', 'DAGEN', 'EERST', 'FIETS', 'GROEN', 'HONDE', 'IJZER', 'JAREN',
-            'KAMER', 'LAMPE', 'MOLEN', 'NACHT', 'OLIEF', 'PAARD', 'QUOTE', 'RADIO', 'STOEL',
-            'TASJE', 'UITJE', 'VADER', 'WATER', 'XENON', 'YACHT', 'ZONNE'
+            'APPLE', 'BEACH', 'CLOUD', 'DREAM', 'EARTH', 'FLAME', 'GHOST', 'HEART', 'IVORY',
+            'JUICE', 'KNIFE', 'LIGHT', 'MONEY', 'NIGHT', 'OCEAN', 'PEACE', 'QUEEN', 'RADIO',
+            'SMILE', 'TIGER', 'UNITY', 'VOICE', 'WATER', 'XEROX', 'YOUTH', 'ZEBRA', 'BRAIN',
+            'CHAIR', 'DANCE', 'EAGLE', 'FROST', 'GREEN', 'HOUSE', 'IDEAL', 'JUDGE', 'KARMA',
+            'LEMON', 'MAGIC', 'NORTH', 'PAPER', 'QUIET', 'RIVER', 'STORM', 'TRAIN', 'URBAN',
+            'VITAL', 'WATCH', 'YIELD', 'ZESTY', 'ALIVE', 'BLISS', 'CLEAN', 'DREAM', 'EAGER',
+            'FAITH', 'GRACE', 'HAPPY', 'IDEAL', 'JOLLY', 'KIND', 'LOVE', 'MAGIC', 'NOVEL',
+            'PEACE', 'QUIET', 'RADIO', 'SMILE', 'TRUTH', 'UNITY', 'VITAL', 'WISDOM', 'YOUTH'
         ];
 
         let currentWord = '';
@@ -395,7 +400,7 @@
             }
 
             if (!words.includes(guess)) {
-                showMessage('Geen geldig woord!');
+                showMessage('Not a valid word!');
                 return;
             }
 
@@ -407,10 +412,10 @@
 
             if (guess === currentWord) {
                 isGameOver = true;
-                showMessage('Gewonnen! 🎉');
+                showMessage('You won! 🎉');
             } else if (currentRow === 5) {
                 isGameOver = true;
-                showMessage(`Game Over! Het woord was: ${currentWord}`);
+                showMessage(`Game Over! The word was: ${currentWord}`);
             } else {
                 currentRow++;
                 currentTile = 0;
