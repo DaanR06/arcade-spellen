@@ -3,10 +3,12 @@ const game2048 = {
     grid: [],
     score: 0,
     gridSize: 4,
+    lastMerged: new Set(),
 
     init: function() {
         this.grid = Array(this.gridSize).fill().map(() => Array(this.gridSize).fill(0));
         this.score = 0;
+        this.lastMerged.clear();
         this.updateScore();
         this.addNewNumber();
         this.addNewNumber();
@@ -25,6 +27,8 @@ const game2048 = {
         if (emptyCells.length > 0) {
             const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
             this.grid[randomCell.x][randomCell.y] = Math.random() < 0.9 ? 2 : 4;
+            // Mark this cell as new for animation
+            this.lastMerged.add(`${randomCell.x},${randomCell.y}`);
         }
     },
 
@@ -42,6 +46,13 @@ const game2048 = {
                 if (value !== 0) {
                     cell.textContent = value;
                     cell.setAttribute('data-value', value);
+                    
+                    // Add animation classes
+                    const cellKey = `${i},${j}`;
+                    if (this.lastMerged.has(cellKey)) {
+                        cell.classList.add('new');
+                        this.lastMerged.delete(cellKey);
+                    }
                 }
                 gridElement.appendChild(cell);
             }
@@ -55,8 +66,26 @@ const game2048 = {
         }
     },
 
+    showScoreAnimation: function(score, x, y) {
+        const gridElement = document.getElementById('grid');
+        if (!gridElement) return;
+
+        const scoreElement = document.createElement('div');
+        scoreElement.className = 'score-animation';
+        scoreElement.textContent = `+${score}`;
+        scoreElement.style.left = `${x}px`;
+        scoreElement.style.top = `${y}px`;
+        gridElement.appendChild(scoreElement);
+
+        // Remove the element after animation
+        setTimeout(() => {
+            scoreElement.remove();
+        }, 1000);
+    },
+
     moveCells: function(direction) {
         let moved = false;
+        this.lastMerged.clear();
 
         switch(direction) {
             case 'up':
@@ -71,9 +100,17 @@ const game2048 = {
                                     moved = true;
                                 } else if (this.grid[row-1][j] === this.grid[row][j]) {
                                     this.grid[row-1][j] *= 2;
-                                    this.score += this.grid[row-1][j];
+                                    const scoreGain = this.grid[row-1][j];
+                                    this.score += scoreGain;
                                     this.grid[row][j] = 0;
                                     moved = true;
+                                    this.lastMerged.add(`${row-1},${j}`);
+                                    // Show score animation
+                                    const cellElement = document.querySelector(`.cell[data-value="${scoreGain}"]`);
+                                    if (cellElement) {
+                                        const rect = cellElement.getBoundingClientRect();
+                                        this.showScoreAnimation(scoreGain, rect.left, rect.top);
+                                    }
                                     break;
                                 }
                                 row--;
@@ -94,9 +131,17 @@ const game2048 = {
                                     moved = true;
                                 } else if (this.grid[row+1][j] === this.grid[row][j]) {
                                     this.grid[row+1][j] *= 2;
-                                    this.score += this.grid[row+1][j];
+                                    const scoreGain = this.grid[row+1][j];
+                                    this.score += scoreGain;
                                     this.grid[row][j] = 0;
                                     moved = true;
+                                    this.lastMerged.add(`${row+1},${j}`);
+                                    // Show score animation
+                                    const cellElement = document.querySelector(`.cell[data-value="${scoreGain}"]`);
+                                    if (cellElement) {
+                                        const rect = cellElement.getBoundingClientRect();
+                                        this.showScoreAnimation(scoreGain, rect.left, rect.top);
+                                    }
                                     break;
                                 }
                                 row++;
@@ -117,9 +162,17 @@ const game2048 = {
                                     moved = true;
                                 } else if (this.grid[i][col-1] === this.grid[i][col]) {
                                     this.grid[i][col-1] *= 2;
-                                    this.score += this.grid[i][col-1];
+                                    const scoreGain = this.grid[i][col-1];
+                                    this.score += scoreGain;
                                     this.grid[i][col] = 0;
                                     moved = true;
+                                    this.lastMerged.add(`${i},${col-1}`);
+                                    // Show score animation
+                                    const cellElement = document.querySelector(`.cell[data-value="${scoreGain}"]`);
+                                    if (cellElement) {
+                                        const rect = cellElement.getBoundingClientRect();
+                                        this.showScoreAnimation(scoreGain, rect.left, rect.top);
+                                    }
                                     break;
                                 }
                                 col--;
@@ -140,9 +193,17 @@ const game2048 = {
                                     moved = true;
                                 } else if (this.grid[i][col+1] === this.grid[i][col]) {
                                     this.grid[i][col+1] *= 2;
-                                    this.score += this.grid[i][col+1];
+                                    const scoreGain = this.grid[i][col+1];
+                                    this.score += scoreGain;
                                     this.grid[i][col] = 0;
                                     moved = true;
+                                    this.lastMerged.add(`${i},${col+1}`);
+                                    // Show score animation
+                                    const cellElement = document.querySelector(`.cell[data-value="${scoreGain}"]`);
+                                    if (cellElement) {
+                                        const rect = cellElement.getBoundingClientRect();
+                                        this.showScoreAnimation(scoreGain, rect.left, rect.top);
+                                    }
                                     break;
                                 }
                                 col++;

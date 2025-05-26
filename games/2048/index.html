@@ -45,6 +45,7 @@
             padding: 10px;
             border-radius: 5px;
             box-shadow: 0 0 20px rgba(255, 0, 0, 0.3);
+            position: relative;
         }
 
         .cell {
@@ -56,7 +57,8 @@
             align-items: center;
             justify-content: center;
             font-size: 24px;
-            transition: all 0.2s;
+            transition: all 0.15s ease-in-out;
+            position: relative;
         }
 
         .cell[data-value="2"] { background-color: #eee4da; color: #776e65; }
@@ -70,6 +72,41 @@
         .cell[data-value="512"] { background-color: #edc850; color: #f9f6f2; font-size: 20px; }
         .cell[data-value="1024"] { background-color: #edc53f; color: #f9f6f2; font-size: 18px; }
         .cell[data-value="2048"] { background-color: #edc22e; color: #f9f6f2; font-size: 18px; }
+
+        .cell.new {
+            animation: appear 0.2s ease-in-out;
+        }
+
+        .cell.merged {
+            animation: pop 0.2s ease-in-out;
+        }
+
+        .cell.moving {
+            z-index: 1;
+        }
+
+        @keyframes appear {
+            0% {
+                opacity: 0;
+                transform: scale(0);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes pop {
+            0% {
+                transform: scale(0.8);
+            }
+            50% {
+                transform: scale(1.1);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
 
         .controls {
             margin-top: 20px;
@@ -86,11 +123,13 @@
             cursor: pointer;
             font-family: 'Press Start 2P', cursive;
             font-size: 12px;
-            transition: background-color 0.2s;
+            transition: all 0.2s;
         }
 
         button:hover {
             background-color: #2a2a2a;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 0, 0, 0.2);
         }
 
         .back-button {
@@ -102,11 +141,13 @@
             background-color: #1a1a1a;
             padding: 10px 20px;
             border-radius: 5px;
-            transition: background-color 0.2s;
+            transition: all 0.2s;
         }
 
         .back-button:hover {
             background-color: #2a2a2a;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 0, 0, 0.2);
         }
 
         .instructions {
@@ -115,6 +156,25 @@
             font-size: 12px;
             color: #ccc;
             max-width: 600px;
+        }
+
+        .score-animation {
+            position: absolute;
+            color: #ff0000;
+            font-size: 16px;
+            pointer-events: none;
+            animation: scoreFloat 1s ease-out forwards;
+        }
+
+        @keyframes scoreFloat {
+            0% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
         }
     </style>
 </head>
