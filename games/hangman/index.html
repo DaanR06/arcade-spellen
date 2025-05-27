@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hangman</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #000;
+            color: #fff;
+            font-family: 'Press Start 2P', cursive;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        h1 {
+            color: #ff0000;
+            text-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+            margin-bottom: 20px;
+            font-size: clamp(24px, 5vw, 48px);
+            text-align: center;
+        }
+
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            max-width: 800px;
+            width: 100%;
+        }
+
+        .hangman-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            margin-bottom: 20px;
+        }
+
+        .hangman {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .word-display {
+            font-size: 2em;
+            letter-spacing: 0.2em;
+            margin: 20px 0;
+            min-height: 1.5em;
+        }
+
+        .keyboard {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 5px;
+            margin: 20px 0;
+            max-width: 600px;
+        }
+
+        .key {
+            background-color: #1a1a1a;
+            border: 2px solid #ff0000;
+            color: #fff;
+            padding: 10px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-radius: 5px;
+        }
+
+        .key:hover {
+            background-color: #2a2a2a;
+            transform: translateY(-2px);
+            box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+        }
+
+        .key.used {
+            background-color: #333;
+            border-color: #666;
+            color: #666;
+            cursor: not-allowed;
+        }
+
+        .key.correct {
+            background-color: #4CAF50;
+            border-color: #2E7D32;
+        }
+
+        .key.wrong {
+            background-color: #f44336;
+            border-color: #b71c1c;
+        }
+
+        .message {
+            font-size: 1.2em;
+            margin: 20px 0;
+            text-align: center;
+            min-height: 1.5em;
+        }
+
+        .message.win {
+            color: #4CAF50;
+        }
+
+        .message.lose {
+            color: #f44336;
+        }
+
+        .back-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            text-decoration: none;
+            color: #fff;
+            background-color: #1a1a1a;
+            padding: 10px 20px;
+            border-radius: 5px;
+            transition: all 0.2s;
+            font-size: clamp(10px, 2vw, 12px);
+        }
+
+        .back-button:hover {
+            background-color: #2a2a2a;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 0, 0, 0.2);
+        }
+
+        .new-game-button {
+            background-color: #ff0000;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1em;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: all 0.3s;
+            margin-top: 20px;
+        }
+
+        .new-game-button:hover {
+            background-color: #cc0000;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 0, 0, 0.3);
+        }
+
+        @media (max-width: 600px) {
+            .keyboard {
+                grid-template-columns: repeat(7, 1fr);
+            }
+
+            .key {
+                padding: 8px;
+                font-size: 0.8em;
+            }
+
+            .word-display {
+                font-size: 1.5em;
+            }
+
+            .hangman-container {
+                width: 250px;
+                height: 250px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="../../index.html" class="back-button">Terug</a>
+    <h1>Hangman</h1>
+    <div class="game-container">
+        <div class="hangman-container">
+            <svg class="hangman" viewBox="0 0 300 300">
+                <!-- Galg -->
+                <line x1="50" y1="250" x2="250" y2="250" stroke="#fff" stroke-width="5"/>
+                <line x1="100" y1="250" x2="100" y2="50" stroke="#fff" stroke-width="5"/>
+                <line x1="100" y1="50" x2="200" y2="50" stroke="#fff" stroke-width="5"/>
+                <line x1="200" y1="50" x2="200" y2="100" stroke="#fff" stroke-width="5"/>
+                
+                <!-- Hoofd -->
+                <circle cx="200" cy="120" r="20" stroke="#fff" stroke-width="5" fill="none" class="part" style="display: none;"/>
+                
+                <!-- Lichaam -->
+                <line x1="200" y1="140" x2="200" y2="200" stroke="#fff" stroke-width="5" class="part" style="display: none;"/>
+                
+                <!-- Armen -->
+                <line x1="200" y1="160" x2="170" y2="180" stroke="#fff" stroke-width="5" class="part" style="display: none;"/>
+                <line x1="200" y1="160" x2="230" y2="180" stroke="#fff" stroke-width="5" class="part" style="display: none;"/>
+                
+                <!-- Benen -->
+                <line x1="200" y1="200" x2="170" y2="240" stroke="#fff" stroke-width="5" class="part" style="display: none;"/>
+                <line x1="200" y1="200" x2="230" y2="240" stroke="#fff" stroke-width="5" class="part" style="display: none;"/>
+            </svg>
+        </div>
+        <div class="word-display"></div>
+        <div class="message"></div>
+        <div class="keyboard"></div>
+        <button class="new-game-button" onclick="startNewGame()">Nieuw Spel</button>
+    </div>
+
+    <script>
+        const words = [
+            'JAVASCRIPT', 'PYTHON', 'HTML', 'CSS', 'PROGRAMMEREN',
+            'COMPUTER', 'INTERNET', 'WEBSITE', 'DATABASE', 'ALGORITME',
+            'NETWERK', 'SERVEUR', 'CLIENT', 'BROWSER', 'APPLICATIE',
+            'SYSTEEM', 'SOFTWARE', 'HARDWARE', 'MOBIEL', 'DESKTOP'
+        ];
+
+        let currentWord = '';
+        let guessedLetters = new Set();
+        let wrongGuesses = 0;
+        const maxWrongGuesses = 6;
+
+        function startNewGame() {
+            currentWord = words[Math.floor(Math.random() * words.length)];
+            guessedLetters.clear();
+            wrongGuesses = 0;
+            updateWordDisplay();
+            updateHangman();
+            updateKeyboard();
+            document.querySelector('.message').textContent = '';
+            document.querySelector('.message').className = 'message';
+        }
+
+        function updateWordDisplay() {
+            const display = currentWord
+                .split('')
+                .map(letter => guessedLetters.has(letter) ? letter : '_')
+                .join(' ');
+            document.querySelector('.word-display').textContent = display;
+        }
+
+        function updateHangman() {
+            const parts = document.querySelectorAll('.part');
+            parts.forEach((part, index) => {
+                part.style.display = index < wrongGuesses ? 'block' : 'none';
+            });
+        }
+
+        function createKeyboard() {
+            const keyboard = document.querySelector('.keyboard');
+            keyboard.innerHTML = '';
+            'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(letter => {
+                const key = document.createElement('button');
+                key.className = 'key';
+                key.textContent = letter;
+                key.onclick = () => makeGuess(letter);
+                keyboard.appendChild(key);
+            });
+        }
+
+        function updateKeyboard() {
+            const keys = document.querySelectorAll('.key');
+            keys.forEach(key => {
+                const letter = key.textContent;
+                key.className = 'key';
+                if (guessedLetters.has(letter)) {
+                    key.classList.add('used');
+                    if (currentWord.includes(letter)) {
+                        key.classList.add('correct');
+                    } else {
+                        key.classList.add('wrong');
+                    }
+                }
+            });
+        }
+
+        function makeGuess(letter) {
+            if (guessedLetters.has(letter) || wrongGuesses >= maxWrongGuesses) return;
+
+            guessedLetters.add(letter);
+            
+            if (!currentWord.includes(letter)) {
+                wrongGuesses++;
+                updateHangman();
+            }
+
+            updateWordDisplay();
+            updateKeyboard();
+
+            checkGameEnd();
+        }
+
+        function checkGameEnd() {
+            const message = document.querySelector('.message');
+            
+            if (wrongGuesses >= maxWrongGuesses) {
+                message.textContent = `Game Over! Het woord was: ${currentWord}`;
+                message.className = 'message lose';
+            } else if (currentWord.split('').every(letter => guessedLetters.has(letter))) {
+                message.textContent = 'Gefeliciteerd! Je hebt gewonnen!';
+                message.className = 'message win';
+            }
+        }
+
+        // Initialiseer het spel
+        createKeyboard();
+        startNewGame();
+
+        // Voeg keyboard event listeners toe
+        document.addEventListener('keydown', event => {
+            const letter = event.key.toUpperCase();
+            if (/^[A-Z]$/.test(letter)) {
+                makeGuess(letter);
+            }
+        });
+    </script>
+</body>
+</html> 

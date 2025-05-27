@@ -315,15 +315,12 @@
         <button onclick="startNewGame()">Nieuw Spel</button>
     </div>
     <div class="instructions">
-        <p>Guess the word in 6 attempts. Each guess must be a valid word.</p>
-        <p>Green = letter in correct position, Orange = letter in word but wrong position, Red = letter not in word</p>
+        <p>Raad het woord in 6 pogingen. Elke poging moet een geldig Nederlands woord zijn.</p>
+        <p>Groen = letter op juiste positie, Oranje = letter in woord maar verkeerde positie, Rood = letter niet in woord</p>
     </div>
     <div class="message" id="message"></div>
 
     <script>
-        // API endpoint voor woordenvalidatie
-        const DICTIONARY_API = 'https://api.dictionaryapi.dev/api/v2/entries/en/';
-
         let currentWord = '';
         let currentRow = 0;
         let currentTile = 0;
@@ -331,39 +328,23 @@
         let attempts = 0;
         let validWords = new Set();
 
-        // Laad een lijst met veel voorkomende 5-letter woorden
+        // Nederlandse 5-letter woorden
         const commonWords = [
-            'APPLE', 'BEACH', 'CLOUD', 'DREAM', 'EARTH', 'FLAME', 'GHOST', 'HEART', 'IVORY',
-            'JUICE', 'KNIFE', 'LIGHT', 'MONEY', 'NIGHT', 'OCEAN', 'PEACE', 'QUEEN', 'RADIO',
-            'SMILE', 'TIGER', 'UNITY', 'VOICE', 'WATER', 'XEROX', 'YOUTH', 'ZEBRA', 'BRAIN',
-            'CHAIR', 'DANCE', 'EAGLE', 'FROST', 'GREEN', 'HOUSE', 'IDEAL', 'JUDGE', 'KARMA',
-            'LEMON', 'MAGIC', 'NORTH', 'PAPER', 'QUIET', 'RIVER', 'STORM', 'TRAIN', 'URBAN',
-            'VITAL', 'WATCH', 'YIELD', 'ZESTY', 'ALIVE', 'BLISS', 'CLEAN', 'DREAM', 'EAGER',
-            'FAITH', 'GRACE', 'HAPPY', 'IDEAL', 'JOLLY', 'KIND', 'LOVE', 'MAGIC', 'NOVEL',
-            'PEACE', 'QUIET', 'RADIO', 'SMILE', 'TRUTH', 'UNITY', 'VITAL', 'WISDOM', 'YOUTH'
+            'APPEL', 'BLOEM', 'CLOWN', 'DROOM', 'EIKEN', 'FONTS', 'GROEN', 'HONDE', 'IJZER',
+            'JUREN', 'KAMER', 'LAMPA', 'MOLEN', 'NACHT', 'OLIEF', 'PAARD', 'QUOTA', 'RADIO',
+            'STOEL', 'TABEL', 'UNIEK', 'VADER', 'WATER', 'XENON', 'YACHT', 'ZONDE', 'BRAAM',
+            'CHIPS', 'DANS', 'EIKEL', 'FROST', 'GROET', 'HORST', 'IDEAL', 'JUREN', 'KAMER',
+            'LEPEL', 'MAGER', 'NACHT', 'PAARD', 'QUOTA', 'RADIO', 'STOEL', 'TABEL', 'UNIEK',
+            'VADER', 'WATER', 'XENON', 'YACHT', 'ZONDE', 'APPEL', 'BLOEM', 'CLOWN', 'DROOM',
+            'EIKEN', 'FONTS', 'GROEN', 'HONDE', 'IJZER', 'JUREN', 'KAMER', 'LAMPA', 'MOLEN',
+            'NACHT', 'OLIEF', 'PAARD', 'QUOTA', 'RADIO', 'STOEL', 'TABEL', 'UNIEK', 'VADER'
         ];
 
-        // Voeg veel voorkomende woorden toe aan de set
+        // Voeg woorden toe aan de set
         commonWords.forEach(word => validWords.add(word));
 
         async function isValidWord(word) {
-            // Controleer eerst of het woord al in onze set zit
-            if (validWords.has(word)) {
-                return true;
-            }
-
-            try {
-                const response = await fetch(DICTIONARY_API + word.toLowerCase());
-                if (response.ok) {
-                    // Voeg het nieuwe woord toe aan onze set
-                    validWords.add(word);
-                    return true;
-                }
-                return false;
-            } catch (error) {
-                console.error('Error checking word:', error);
-                return false;
-            }
+            return validWords.has(word);
         }
 
         function initGame() {
