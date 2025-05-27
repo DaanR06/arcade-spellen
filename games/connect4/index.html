@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vier op een Rij - Arcade</title>
+    <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #1a1a1a;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .mode-select {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .mode-btn {
+            padding: 10px 20px;
+            background-color: #333;
+            border: none;
+            border-radius: 5px;
+            color: #fff;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .mode-btn:hover {
+            background-color: #444;
+        }
+
+        .mode-btn.active {
+            background-color: #ff0000;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 10px;
+            padding: 20px;
+            background-color: #333;
+            border-radius: 10px;
+            position: relative;
+        }
+
+        .column {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .column:hover {
+            transform: translateY(-5px);
+        }
+
+        .cell {
+            width: 60px;
+            height: 60px;
+            background-color: #1a1a1a;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.3s;
+        }
+
+        .cell.red {
+            background-color: #ff0000;
+        }
+
+        .cell.yellow {
+            background-color: #ffff00;
+        }
+
+        .status {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        .reset-btn {
+            padding: 10px 20px;
+            background-color: #ff0000;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .reset-btn:hover {
+            background-color: #cc0000;
+        }
+
+        .back-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 10px 20px;
+            background-color: #ff0000;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background-color 0.3s;
+        }
+
+        .back-btn:hover {
+            background-color: #cc0000;
+        }
+
+        @media (max-width: 600px) {
+            .cell {
+                width: 40px;
+                height: 40px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="../../index.html" class="back-btn">Terug</a>
+    <div class="game-container">
+        <h1>Vier op een Rij</h1>
+        <div class="mode-select">
+            <button class="mode-btn active" data-mode="friend">Tegen Vriend</button>
+            <button class="mode-btn" data-mode="computer">Tegen Computer</button>
+        </div>
+        <div class="status">Speler 1 is aan de beurt</div>
+        <div class="board"></div>
+        <button class="reset-btn">Nieuw Spel</button>
+    </div>
+
+    <script>
+        class Connect4 {
+            constructor() {
+                this.rows = 6;
+                this.cols = 7;
+                this.board = Array(this.rows).fill().map(() => Array(this.cols).fill(null));
+                this.currentPlayer = 1;
+                this.gameOver = false;
+                this.gameMode = 'friend';
+                this.init();
+            }
+
+            init() {
+                this.createBoard();
+                this.setupEventListeners();
+            }
+
+            createBoard() {
+                const board = document.querySelector('.board');
+                board.innerHTML = '';
+                
+                for (let col = 0; col < this.cols; col++) {
+                    const column = document.createElement('div');
+                    column.className = 'column';
+                    column.dataset.col = col;
+                    
+                    for (let row = 0; row < this.rows; row++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'cell';
+                        cell.dataset.row = row;
+                        cell.dataset.col = col;
+                        column.appendChild(cell);
+                    }
+                    
+                    board.appendChild(column);
+                }
+            }
+
+            setupEventListeners() {
+                document.querySelectorAll('.column').forEach(column => {
+                    column.addEventListener('click', () => {
+                        if (!this.gameOver) {
+                            const col = parseInt(column.dataset.col);
+                            this.makeMove(col);
+                            
+                            // Als het tegen de computer is en het is de beurt van speler 2
+                            if (this.gameMode === 'computer' && this.currentPlayer === 2 && !this.gameOver) {
+                                setTimeout(() => this.makeComputerMove(), 500);
+                            }
+                        }
+                    });
+                });
+
+                document.querySelector('.reset-btn').addEventListener('click', () => {
+                    this.resetGame();
+                });
+
+                // Game mode selectie
+                document.querySelectorAll('.mode-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        this.gameMode = btn.dataset.mode;
+                        this.resetGame();
+                    });
+                });
+            }
+
+            makeComputerMove() {
+                // Eerst checken of we kunnen winnen
+                for (let col = 0; col < this.cols; col++) {
+                    if (this.isValidMove(col)) {
+                        const row = this.getNextRow(col);
+                        this.board[row][col] = 2;
+                        if (this.checkWin(row, col)) {
+                            this.updateDisplay(row, col);
+                            this.gameOver = true;
+                            document.querySelector('.status').textContent = 'Computer heeft gewonnen!';
+                            return;
+                        }
+                        this.board[row][col] = null;
+                    }
+                }
+
+                // Dan checken of we moeten blokkeren
+                for (let col = 0; col < this.cols; col++) {
+                    if (this.isValidMove(col)) {
+                        const row = this.getNextRow(col);
+                        this.board[row][col] = 1;
+                        if (this.checkWin(row, col)) {
+                            this.board[row][col] = 2;
+                            this.updateDisplay(row, col);
+                            this.currentPlayer = 1;
+                            document.querySelector('.status').textContent = 'Speler 1 is aan de beurt';
+                            return;
+                        }
+                        this.board[row][col] = null;
+                    }
+                }
+
+                // Anders een willekeurige zet doen
+                const validMoves = [];
+                for (let col = 0; col < this.cols; col++) {
+                    if (this.isValidMove(col)) {
+                        validMoves.push(col);
+                    }
+                }
+
+                if (validMoves.length > 0) {
+                    const randomCol = validMoves[Math.floor(Math.random() * validMoves.length)];
+                    this.makeMove(randomCol);
+                }
+            }
+
+            isValidMove(col) {
+                return this.board[0][col] === null;
+            }
+
+            getNextRow(col) {
+                for (let row = this.rows - 1; row >= 0; row--) {
+                    if (this.board[row][col] === null) {
+                        return row;
+                    }
+                }
+                return -1;
+            }
+
+            makeMove(col) {
+                if (this.gameOver) return;
+
+                const row = this.getNextRow(col);
+                if (row === -1) return;
+
+                this.board[row][col] = this.currentPlayer;
+                this.updateDisplay(row, col);
+                
+                if (this.checkWin(row, col)) {
+                    this.gameOver = true;
+                    document.querySelector('.status').textContent = 
+                        this.gameMode === 'computer' && this.currentPlayer === 2 
+                            ? 'Computer heeft gewonnen!' 
+                            : `Speler ${this.currentPlayer} heeft gewonnen!`;
+                    return;
+                }
+
+                if (this.checkDraw()) {
+                    this.gameOver = true;
+                    document.querySelector('.status').textContent = 'Gelijkspel!';
+                    return;
+                }
+
+                this.currentPlayer = this.currentPlayer === 1 ? 2 : 1;
+                document.querySelector('.status').textContent = 
+                    this.gameMode === 'computer' && this.currentPlayer === 2
+                        ? 'Computer is aan de beurt'
+                        : `Speler ${this.currentPlayer} is aan de beurt`;
+            }
+
+            updateDisplay(row, col) {
+                const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+                cell.classList.add(this.currentPlayer === 1 ? 'red' : 'yellow');
+            }
+
+            checkWin(row, col) {
+                const directions = [
+                    [[0, 1], [0, -1]], // horizontaal
+                    [[1, 0], [-1, 0]], // verticaal
+                    [[1, 1], [-1, -1]], // diagonaal /
+                    [[1, -1], [-1, 1]] // diagonaal \
+                ];
+
+                return directions.some(dir => {
+                    const count = 1 + 
+                        this.countDirection(row, col, dir[0][0], dir[0][1]) +
+                        this.countDirection(row, col, dir[1][0], dir[1][1]);
+                    return count >= 4;
+                });
+            }
+
+            countDirection(row, col, deltaRow, deltaCol) {
+                let count = 0;
+                let currentRow = row + deltaRow;
+                let currentCol = col + deltaCol;
+
+                while (
+                    currentRow >= 0 && currentRow < this.rows &&
+                    currentCol >= 0 && currentCol < this.cols &&
+                    this.board[currentRow][currentCol] === this.currentPlayer
+                ) {
+                    count++;
+                    currentRow += deltaRow;
+                    currentCol += deltaCol;
+                }
+
+                return count;
+            }
+
+            checkDraw() {
+                return this.board[0].every(cell => cell !== null);
+            }
+
+            resetGame() {
+                this.board = Array(this.rows).fill().map(() => Array(this.cols).fill(null));
+                this.currentPlayer = 1;
+                this.gameOver = false;
+                document.querySelectorAll('.cell').forEach(cell => {
+                    cell.classList.remove('red', 'yellow');
+                });
+                document.querySelector('.status').textContent = 'Speler 1 is aan de beurt';
+            }
+        }
+
+        // Start het spel
+        new Connect4();
+    </script>
+</body>
+</html> 
