@@ -395,6 +395,37 @@
 
             // Select random word from common words
             currentWord = commonWords[Math.floor(Math.random() * commonWords.length)];
+            
+            // Verberg eventuele berichten
+            const message = document.getElementById('message');
+            message.classList.remove('show');
+            message.textContent = '';
+        }
+
+        function renderGrid() {
+            const grid = document.getElementById('grid');
+            const rows = grid.querySelectorAll('.row');
+            
+            for (let i = 0; i < rows.length; i++) {
+                const tiles = rows[i].querySelectorAll('.tile');
+                for (let j = 0; j < tiles.length; j++) {
+                    const tile = tiles[j];
+                    // Behoud de letter en classes van de tile
+                    const letter = tile.textContent;
+                    const classes = Array.from(tile.classList);
+                    
+                    // Reset de tile
+                    tile.className = 'tile';
+                    tile.textContent = letter;
+                    
+                    // Voeg de classes weer toe
+                    classes.forEach(cls => {
+                        if (cls !== 'tile') {
+                            tile.classList.add(cls);
+                        }
+                    });
+                }
+            }
         }
 
         function updateTile(letter) {
@@ -486,6 +517,9 @@
             const row = document.querySelectorAll('.row')[currentRow];
             for (let i = 0; i < 5; i++) {
                 const tile = row.children[i];
+                const letter = tile.textContent;
+                tile.className = 'tile';
+                tile.textContent = letter;
                 tile.classList.add(result[i]);
             }
         }
@@ -517,11 +551,35 @@
         }
 
         function startNewGame() {
+            // Reset alle game states
+            isGameOver = false;
+            currentRow = 0;
+            currentTile = 0;
+            attempts = 0;
+            
+            // Verwijder oude event listeners
+            document.removeEventListener('keydown', handleKeyDown);
+            document.querySelectorAll('.key').forEach(key => {
+                key.removeEventListener('click', handleKeyClick);
+            });
+            
+            // Initialiseer het spel opnieuw
             initGame();
+            
+            // Voeg event listeners opnieuw toe
+            document.addEventListener('keydown', handleKeyDown);
+            document.querySelectorAll('.key').forEach(key => {
+                key.addEventListener('click', handleKeyClick);
+            });
+            
+            // Verberg eventuele berichten
+            const message = document.getElementById('message');
+            message.classList.remove('show');
+            message.textContent = '';
         }
 
-        // Event listeners
-        document.addEventListener('keydown', async (event) => {
+        // Event handler functies
+        async function handleKeyDown(event) {
             if (isGameOver) return;
 
             if (event.key === 'Enter') {
@@ -531,21 +589,25 @@
             } else if (/^[a-zA-Z]$/.test(event.key)) {
                 updateTile(event.key.toUpperCase());
             }
-        });
+        }
 
+        async function handleKeyClick(event) {
+            if (isGameOver) return;
+
+            const letter = event.target.dataset.key;
+            if (letter === 'enter') {
+                await submitGuess();
+            } else if (letter === 'backspace') {
+                deleteLetter();
+            } else {
+                updateTile(letter.toUpperCase());
+            }
+        }
+
+        // Event listeners
+        document.addEventListener('keydown', handleKeyDown);
         document.querySelectorAll('.key').forEach(key => {
-            key.addEventListener('click', async () => {
-                if (isGameOver) return;
-
-                const letter = key.dataset.key;
-                if (letter === 'enter') {
-                    await submitGuess();
-                } else if (letter === 'backspace') {
-                    deleteLetter();
-                } else {
-                    updateTile(letter.toUpperCase());
-                }
-            });
+            key.addEventListener('click', handleKeyClick);
         });
 
         // Start game

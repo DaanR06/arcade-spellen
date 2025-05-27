@@ -176,9 +176,6 @@
     <div class="game-container">
         <canvas id="gameCanvas"></canvas>
     </div>
-    <div class="controls">
-        <button onclick="startGame()">Nieuw Spel</button>
-    </div>
     <div class="touch-controls">
         <button onmousedown="movePaddle('up')" onmouseup="stopPaddle()" ontouchstart="movePaddle('up')" ontouchend="stopPaddle()">↑</button>
         <button onmousedown="movePaddle('down')" onmouseup="stopPaddle()" ontouchstart="movePaddle('down')" ontouchend="stopPaddle()">↓</button>
@@ -202,6 +199,9 @@
         let paddleSpeed = 5;
         let ballSpeed = 5;
         let cellSize;
+        let highScore = 0;
+        let isGameOver = false;
+        let isGameStarted = false;
 
         let player = {
             y: 0,
@@ -345,8 +345,22 @@
             player.speed = 0;
         }
 
+        function startGame() {
+            // Verwijder pop-up en overlay
+            const popup = document.querySelector('div[style*="position: fixed"]');
+            const overlay = document.querySelector('div[style*="background-color: rgba(0, 0, 0, 0.8)"]');
+            if (popup) popup.remove();
+            if (overlay) overlay.remove();
+
+            isGameStarted = true;
+            initGame();
+        }
+
         // Event listeners voor toetsenbord
         document.addEventListener('keydown', (event) => {
+            if (!isGameStarted) {
+                return;
+            }
             if (event.key === 'ArrowUp') {
                 movePaddle('up');
             } else if (event.key === 'ArrowDown') {
@@ -384,15 +398,144 @@
             }
         });
 
-        // Start game
-        function startGame() {
-            initGame();
+        function showStartScreen() {
+            // Maak pop-up container
+            const popup = document.createElement('div');
+            popup.style.position = 'fixed';
+            popup.style.top = '50%';
+            popup.style.left = '50%';
+            popup.style.transform = 'translate(-50%, -50%)';
+            popup.style.backgroundColor = '#1a1a1a';
+            popup.style.padding = '20px';
+            popup.style.borderRadius = '10px';
+            popup.style.boxShadow = '0 0 20px rgba(255, 0, 0, 0.5)';
+            popup.style.textAlign = 'center';
+            popup.style.zIndex = '1000';
+            popup.style.border = '2px solid #ff0000';
+
+            // Voeg content toe
+            popup.innerHTML = `
+                <h2 style="color: #ff0000; font-family: 'Press Start 2P', cursive; margin-bottom: 20px;">PONG</h2>
+                <p style="color: #ffffff; font-family: 'Press Start 2P', cursive; margin: 10px 0;">Gebruik de pijltjestoetsen om je paddle te besturen</p>
+                <p style="color: #ffffff; font-family: 'Press Start 2P', cursive; margin: 10px 0;">Probeer de bal terug te slaan!</p>
+                <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
+                    <button onclick="startGame()" style="
+                        background-color: #ff0000;
+                        color: white;
+                        border: none;
+                        padding: 10px 20px;
+                        font-family: 'Press Start 2P', cursive;
+                        cursor: pointer;
+                        border-radius: 5px;
+                        transition: all 0.3s ease;
+                    ">Start Spel</button>
+                </div>
+            `;
+
+            // Voeg overlay toe
+            const overlay = document.createElement('div');
+            overlay.style.position = 'fixed';
+            overlay.style.top = '0';
+            overlay.style.left = '0';
+            overlay.style.width = '100%';
+            overlay.style.height = '100%';
+            overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+            overlay.style.zIndex = '999';
+
+            // Voeg elementen toe aan de pagina
+            document.body.appendChild(overlay);
+            document.body.appendChild(popup);
         }
 
         // Initialiseer het spel wanneer de pagina laadt
         window.addEventListener('load', () => {
             initGame();
+            isGameStarted = true;
         });
+
+        function gameOver() {
+            isGameOver = true;
+            cancelAnimationFrame(gameLoop);
+            
+            // Update highscore
+            if (playerScore > highScore) {
+                highScore = playerScore;
+                localStorage.setItem('pongHighScore', highScore);
+            }
+
+            // Maak pop-up container
+            const popup = document.createElement('div');
+            popup.style.position = 'fixed';
+            popup.style.top = '50%';
+            popup.style.left = '50%';
+            popup.style.transform = 'translate(-50%, -50%)';
+            popup.style.backgroundColor = '#1a1a1a';
+            popup.style.padding = '20px';
+            popup.style.borderRadius = '10px';
+            popup.style.boxShadow = '0 0 20px rgba(255, 0, 0, 0.5)';
+            popup.style.textAlign = 'center';
+            popup.style.zIndex = '1000';
+            popup.style.border = '2px solid #ff0000';
+
+            // Voeg content toe
+            popup.innerHTML = `
+                <h2 style="color: #ff0000; font-family: 'Press Start 2P', cursive; margin-bottom: 20px;">GAME OVER</h2>
+                <p style="color: #ffffff; font-family: 'Press Start 2P', cursive; margin: 10px 0;">Score: ${playerScore}</p>
+                <p style="color: #ffffff; font-family: 'Press Start 2P', cursive; margin: 10px 0;">Highscore: ${highScore}</p>
+                <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
+                    <button onclick="restartGame()" style="
+                        background-color: #ff0000;
+                        color: white;
+                        border: none;
+                        padding: 10px 20px;
+                        font-family: 'Press Start 2P', cursive;
+                        cursor: pointer;
+                        border-radius: 5px;
+                        transition: all 0.3s ease;
+                    ">Opnieuw Spelen</button>
+                    <button onclick="goToMenu()" style="
+                        background-color: #333;
+                        color: white;
+                        border: none;
+                        padding: 10px 20px;
+                        font-family: 'Press Start 2P', cursive;
+                        cursor: pointer;
+                        border-radius: 5px;
+                        transition: all 0.3s ease;
+                    ">Terug naar Menu</button>
+                </div>
+            `;
+
+            // Voeg overlay toe
+            const overlay = document.createElement('div');
+            overlay.style.position = 'fixed';
+            overlay.style.top = '0';
+            overlay.style.left = '0';
+            overlay.style.width = '100%';
+            overlay.style.height = '100%';
+            overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+            overlay.style.zIndex = '999';
+
+            // Voeg elementen toe aan de pagina
+            document.body.appendChild(overlay);
+            document.body.appendChild(popup);
+        }
+
+        function restartGame() {
+            // Verwijder pop-up en overlay
+            const popup = document.querySelector('div[style*="position: fixed"]');
+            const overlay = document.querySelector('div[style*="background-color: rgba(0, 0, 0, 0.8)"]');
+            if (popup) popup.remove();
+            if (overlay) overlay.remove();
+
+            // Start nieuw spel
+            isGameOver = false;
+            initGame();
+        }
+
+        function goToMenu() {
+            window.location.href = '../../index.html';
+        }
     </script>
 </body>
 </html> 

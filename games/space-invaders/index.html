@@ -196,18 +196,108 @@
         let bulletSpeed = 7;
         let alienSpeed = 1;
         let cellSize;
+        let powerUpTimer = 0;
+        let powerUpInterval = 10000; // Elke 10 seconden
+        let powerUpActive = null;
+        let powerUpDuration = 5000; // 5 seconden
+        let powerUpStartTime = 0;
+        let wave = 1;
+        let lastShot = 0;
+        let normalShotInterval = 300; // Snellere standaard schietsnelheid (was 500)
+        let fastShotInterval = 150; // Snellere power-up schietsnelheid (was 200)
+        let isGameOver = false;
+        let highScore = localStorage.getItem('spaceInvadersHighScore') || 0;
 
         const player = {
             x: 0,
             y: 0,
             width: 50,
             height: 30,
-            speed: 0
+            speed: 0,
+            hasDoubleGun: false,
+            hasFastShoot: false
         };
 
         let bullets = [];
         let aliens = [];
         let alienBullets = [];
+        let powerUps = [];
+
+        const POWER_UP_TYPES = {
+            DOUBLE_GUN: { color: '#00f', effect: 'dubbel kanon', icon: '🔫' },
+            FAST_SHOOT: { color: '#ff0', effect: 'snelle schoten', icon: '⚡' },
+            EXTRA_LIFE: { color: '#0f0', effect: 'extra leven', icon: '❤️' }
+        };
+
+        function createPowerUp() {
+            const types = Object.keys(POWER_UP_TYPES);
+            const type = types[Math.floor(Math.random() * types.length)];
+            const powerUp = {
+                x: Math.random() * (canvas.width - 20),
+                y: 0,
+                width: 20,
+                height: 20,
+                type: type,
+                speed: 2,
+                glow: 0,
+                glowDirection: 1
+            };
+            powerUps.push(powerUp);
+        }
+
+        function applyPowerUp(type) {
+            powerUpActive = type;
+            powerUpStartTime = Date.now();
+            
+            switch(type) {
+                case 'DOUBLE_GUN':
+                    player.hasDoubleGun = true;
+                    player.hasFastShoot = false;
+                    break;
+                case 'FAST_SHOOT':
+                    player.hasFastShoot = true;
+                    player.hasDoubleGun = false;
+                    break;
+                case 'EXTRA_LIFE':
+                    lives++;
+                    livesElement.textContent = lives;
+                    break;
+            }
+        }
+
+        function updatePowerUps() {
+            // Update bestaande power-ups
+            powerUps = powerUps.filter(powerUp => {
+                powerUp.y += powerUp.speed;
+                
+                // Check voor botsing met speler
+                if (powerUp.y + powerUp.height > player.y &&
+                    powerUp.y < player.y + player.height &&
+                    powerUp.x + powerUp.width > player.x &&
+                    powerUp.x < player.x + player.width) {
+                    applyPowerUp(powerUp.type);
+                    return false;
+                }
+                
+                return powerUp.y < canvas.height;
+            });
+
+            // Check power-up timer
+            if (powerUpActive && Date.now() - powerUpStartTime > powerUpDuration) {
+                powerUpActive = null;
+                player.hasDoubleGun = false;
+                player.hasFastShoot = false;
+                // Verwijder alle lasers als de power-up afloopt
+                bullets = bullets.filter(bullet => !bullet.isLaser);
+            }
+
+            // Genereer nieuwe power-ups
+            powerUpTimer += 16; // Ongeveer 60 FPS
+            if (powerUpTimer >= powerUpInterval) {
+                powerUpTimer = 0;
+                createPowerUp();
+            }
+        }
 
         function initGame() {
             // Bereken de juiste celgrootte gebaseerd op canvas grootte
@@ -219,6 +309,8 @@
             // Reset game state
             score = 0;
             lives = 3;
+            wave = 1;
+            isGameOver = false;
             scoreElement.textContent = score;
             livesElement.textContent = lives;
 
@@ -226,11 +318,17 @@
             player.x = canvas.width / 2 - player.width / 2;
             player.y = canvas.height - player.height - 20;
             player.speed = 0;
+            player.hasDoubleGun = false;
+            player.hasFastShoot = false;
 
             // Reset arrays
             bullets = [];
             aliens = [];
             alienBullets = [];
+            powerUps = [];
+            powerUpActive = null;
+            powerUpTimer = 0;
+            lastShot = 0;
 
             // Create aliens
             createAliens();
@@ -253,13 +351,16 @@
                         x: startX + col * spacing,
                         y: startY + row * spacing,
                         width: 40,
-                        height: 30
+                        height: 30,
+                        health: wave // Meer gezondheid per wave
                     });
                 }
             }
         }
 
         function update() {
+            if (isGameOver) return;
+
             // Clear canvas
             ctx.fillStyle = '#1a1a1a';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -267,6 +368,12 @@
             // Update player
             player.x += player.speed;
             player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
+
+            // Auto-shoot als fast shoot actief is
+            if (player.hasFastShoot && Date.now() - lastShot > fastShotInterval) {
+                shoot();
+                lastShot = Date.now();
+            }
 
             // Update bullets
             bullets = bullets.filter(bullet => {
@@ -279,6 +386,9 @@
                 bullet.y += bulletSpeed;
                 return bullet.y < canvas.height;
             });
+
+            // Update power-ups
+            updatePowerUps();
 
             // Move aliens
             let hitEdge = false;
@@ -310,6 +420,13 @@
             // Check collisions
             checkCollisions();
 
+            // Check voor nieuwe wave
+            if (aliens.length === 0) {
+                wave++;
+                alienSpeed = Math.min(3, 1 + wave * 0.2); // Verhoog snelheid per wave
+                createAliens();
+            }
+
             // Draw everything
             draw();
 
@@ -319,44 +436,55 @@
 
         function checkCollisions() {
             // Player bullets hitting aliens
-            bullets.forEach((bullet, bulletIndex) => {
-                aliens.forEach((alien, alienIndex) => {
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const bullet = bullets[i];
+                for (let j = aliens.length - 1; j >= 0; j--) {
+                    const alien = aliens[j];
                     if (bullet.x < alien.x + alien.width &&
                         bullet.x + bullet.width > alien.x &&
                         bullet.y < alien.y + alien.height &&
                         bullet.y + bullet.height > alien.y) {
-                        bullets.splice(bulletIndex, 1);
-                        aliens.splice(alienIndex, 1);
+                        // Verwijder de kogel en het vliegtuig
+                        bullets.splice(i, 1);
+                        aliens.splice(j, 1);
                         score += 100;
                         scoreElement.textContent = score;
+                        break; // Stop de binnenste loop omdat de kogel al is verwijderd
                     }
-                });
-            });
+                }
+            }
 
             // Alien bullets hitting player
-            alienBullets.forEach((bullet, bulletIndex) => {
+            for (let i = alienBullets.length - 1; i >= 0; i--) {
+                const bullet = alienBullets[i];
                 if (bullet.x < player.x + player.width &&
                     bullet.x + bullet.width > player.x &&
                     bullet.y < player.y + player.height &&
                     bullet.y + bullet.height > player.y) {
-                    alienBullets.splice(bulletIndex, 1);
+                    alienBullets.splice(i, 1);
                     lives--;
                     livesElement.textContent = lives;
                     if (lives <= 0) {
                         gameOver();
                     }
                 }
-            });
+            }
 
             // Aliens reaching bottom
-            aliens.forEach(alien => {
+            for (let i = aliens.length - 1; i >= 0; i--) {
+                const alien = aliens[i];
                 if (alien.y + alien.height >= player.y) {
                     gameOver();
+                    break;
                 }
-            });
+            }
         }
 
         function draw() {
+            // Clear canvas
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
             // Draw player
             ctx.fillStyle = '#0f0';
             // Teken straaljager
@@ -374,9 +502,14 @@
             ctx.fill();
 
             // Draw bullets
-            ctx.fillStyle = '#fff';
             bullets.forEach(bullet => {
-                ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+                if (bullet.isLaser) {
+                    ctx.fillStyle = '#0ff';
+                    ctx.fillRect(bullet.x, 0, bullet.width, canvas.height);
+                } else {
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+                }
             });
 
             // Draw alien bullets
@@ -402,21 +535,154 @@
                 ctx.arc(alien.x + alien.width/2, alien.y + alien.height/2, 5, 0, Math.PI * 2);
                 ctx.fill();
             });
+
+            // Draw power-ups
+            powerUps.forEach(powerUp => {
+                // Update glow effect
+                powerUp.glow += 0.1 * powerUp.glowDirection;
+                if (powerUp.glow > 1) {
+                    powerUp.glow = 1;
+                    powerUp.glowDirection = -1;
+                } else if (powerUp.glow < 0) {
+                    powerUp.glow = 0;
+                    powerUp.glowDirection = 1;
+                }
+
+                // Draw glow
+                ctx.fillStyle = POWER_UP_TYPES[powerUp.type].color + Math.floor(powerUp.glow * 255).toString(16).padStart(2, '0');
+                ctx.beginPath();
+                ctx.arc(powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2, powerUp.width/2 + 5, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Draw power-up
+                ctx.fillStyle = POWER_UP_TYPES[powerUp.type].color;
+                ctx.beginPath();
+                ctx.arc(powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2, powerUp.width/2, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Draw icon
+                ctx.font = '16px Arial';
+                ctx.fillStyle = '#fff';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(POWER_UP_TYPES[powerUp.type].icon, powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2);
+            });
+
+            // Draw active power-up indicator
+            if (powerUpActive) {
+                ctx.fillStyle = POWER_UP_TYPES[powerUpActive].color;
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'left';
+                const timeLeft = Math.ceil((powerUpDuration - (Date.now() - powerUpStartTime)) / 1000);
+                ctx.fillText(`${POWER_UP_TYPES[powerUpActive].icon} ${POWER_UP_TYPES[powerUpActive].effect} (${timeLeft}s)`, 10, 20);
+            }
+
+            // Draw wave number
+            ctx.fillStyle = '#fff';
+            ctx.font = '16px Arial';
+            ctx.textAlign = 'right';
+            ctx.fillText(`Wave: ${wave}`, canvas.width - 10, 20);
         }
 
         function gameOver() {
+            isGameOver = true;
             cancelAnimationFrame(gameLoop);
-            alert('Game Over! Je score is: ' + score);
+            
+            // Update highscore
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('spaceInvadersHighScore', highScore);
+            }
+
+            // Maak pop-up container
+            const popup = document.createElement('div');
+            popup.style.position = 'fixed';
+            popup.style.top = '50%';
+            popup.style.left = '50%';
+            popup.style.transform = 'translate(-50%, -50%)';
+            popup.style.backgroundColor = '#1a1a1a';
+            popup.style.padding = '20px';
+            popup.style.borderRadius = '10px';
+            popup.style.boxShadow = '0 0 20px rgba(255, 0, 0, 0.5)';
+            popup.style.textAlign = 'center';
+            popup.style.zIndex = '1000';
+            popup.style.border = '2px solid #ff0000';
+
+            // Voeg content toe
+            popup.innerHTML = `
+                <h2 style="color: #ff0000; font-family: 'Press Start 2P', cursive; margin-bottom: 20px;">GAME OVER</h2>
+                <p style="color: #ffffff; font-family: 'Press Start 2P', cursive; margin: 10px 0;">Score: ${score}</p>
+                <p style="color: #ffffff; font-family: 'Press Start 2P', cursive; margin: 10px 0;">Highscore: ${highScore}</p>
+                <p style="color: #ffffff; font-family: 'Press Start 2P', cursive; margin: 10px 0;">Wave: ${wave}</p>
+                <button onclick="restartGame()" style="
+                    background-color: #ff0000;
+                    color: white;
+                    border: none;
+                    padding: 10px 20px;
+                    margin-top: 20px;
+                    font-family: 'Press Start 2P', cursive;
+                    cursor: pointer;
+                    border-radius: 5px;
+                    transition: all 0.3s ease;
+                ">Opnieuw Spelen</button>
+            `;
+
+            // Voeg overlay toe
+            const overlay = document.createElement('div');
+            overlay.style.position = 'fixed';
+            overlay.style.top = '0';
+            overlay.style.left = '0';
+            overlay.style.width = '100%';
+            overlay.style.height = '100%';
+            overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+            overlay.style.zIndex = '999';
+
+            // Voeg elementen toe aan de pagina
+            document.body.appendChild(overlay);
+            document.body.appendChild(popup);
+        }
+
+        function restartGame() {
+            // Verwijder pop-up en overlay
+            const popup = document.querySelector('div[style*="position: fixed"]');
+            const overlay = document.querySelector('div[style*="background-color: rgba(0, 0, 0, 0.8)"]');
+            if (popup) popup.remove();
+            if (overlay) overlay.remove();
+
+            // Start nieuw spel
+            isGameOver = false;
+            initGame();
         }
 
         function shoot() {
-            if (bullets.length === 0 || bullets[bullets.length - 1].y < player.y - 30) {
-                bullets.push({
-                    x: player.x + player.width / 2 - 2,
-                    y: player.y,
-                    width: 4,
-                    height: 10
-                });
+            const currentTime = Date.now();
+            const shotInterval = player.hasFastShoot ? fastShotInterval : normalShotInterval;
+            
+            if (currentTime - lastShot > shotInterval) {
+                if (player.hasDoubleGun) {
+                    // Dubbel kanon
+                    bullets.push({
+                        x: player.x + player.width / 4 - 1,
+                        y: player.y,
+                        width: 4,
+                        height: 10
+                    });
+                    bullets.push({
+                        x: player.x + player.width * 3/4 - 1,
+                        y: player.y,
+                        width: 4,
+                        height: 10
+                    });
+                } else {
+                    // Normaal schot
+                    bullets.push({
+                        x: player.x + player.width / 2 - 2,
+                        y: player.y,
+                        width: 4,
+                        height: 10
+                    });
+                }
+                lastShot = currentTime;
             }
         }
 
@@ -450,7 +716,7 @@
 
         // Handle window resize
         window.addEventListener('resize', () => {
-            if (gameLoop) {
+            if (!isGameOver) {
                 initGame();
             }
         });
