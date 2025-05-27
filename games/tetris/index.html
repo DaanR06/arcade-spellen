@@ -78,27 +78,32 @@
             color: #ccc;
         }
 
-        .controls {
-            margin-top: 20px;
-            display: flex;
+        .touch-controls {
+            display: none;
+            grid-template-columns: repeat(3, 1fr);
             gap: 10px;
-            flex-wrap: wrap;
-            justify-content: center;
+            margin-top: 20px;
+            width: 100%;
+            max-width: 300px;
         }
 
-        button {
+        .touch-controls button {
+            aspect-ratio: 1;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
             background-color: #1a1a1a;
             color: #fff;
             border: none;
-            padding: 10px 20px;
             border-radius: 5px;
             cursor: pointer;
             font-family: 'Press Start 2P', cursive;
-            font-size: clamp(10px, 2vw, 12px);
             transition: all 0.2s;
         }
 
-        button:hover {
+        .touch-controls button:hover {
             background-color: #2a2a2a;
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(255, 0, 0, 0.2);
@@ -132,25 +137,6 @@
             padding: 0 20px;
         }
 
-        /* Touch controls for mobile */
-        .touch-controls {
-            display: none;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin-top: 20px;
-            width: 100%;
-            max-width: 300px;
-        }
-
-        .touch-controls button {
-            aspect-ratio: 1;
-            padding: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-        }
-
         @media (max-width: 768px) {
             .touch-controls {
                 display: grid;
@@ -181,14 +167,6 @@
                 flex: 1;
                 min-width: 150px;
             }
-
-            .controls {
-                gap: 8px;
-            }
-
-            button {
-                padding: 8px 16px;
-            }
         }
     </style>
 </head>
@@ -199,7 +177,7 @@
         <div class="game-board">
             <canvas id="gameCanvas"></canvas>
         </div>
-        <div class="game-info">
+    <div class="game-info">
             <div class="info-box">
                 <h2>Score</h2>
                 <p>Huidig: <span id="score">0</span></p>
@@ -217,490 +195,440 @@
         </div>
     </div>
     <div class="touch-controls">
-        <button onclick="moveLeft()">←</button>
-        <button onclick="rotate()">↻</button>
-        <button onclick="moveRight()">→</button>
-        <button onclick="dropDown()">↓</button>
+        <button onclick="game.moveLeft()">←</button>
+        <button onclick="game.rotate()">↻</button>
+        <button onclick="game.moveRight()">→</button>
+        <button onclick="game.dropDown()">↓</button>
     </div>
     <div class="instructions">
         <p>Gebruik de pijltjestoetsen of touch controls om te spelen. Pijltje omhoog om te roteren, pijltje omlaag om sneller te vallen!</p>
     </div>
 
     <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const nextCanvas = document.getElementById('nextPiece');
-        const nextCtx = nextCanvas.getContext('2d');
-        const scoreElement = document.getElementById('score');
-        const highScoreElement = document.getElementById('highScore');
-        const levelElement = document.getElementById('level');
-        const linesElement = document.getElementById('lines');
+        class Tetris {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.nextCanvas = document.getElementById('nextPiece');
+                this.nextCtx = this.nextCanvas.getContext('2d');
+                
+                this.COLS = 10;
+                this.ROWS = 20;
+                this.BLOCK_SIZE = 30;
+                this.cellSize = 0;
+                this.nextCellSize = 0;
 
-        const COLS = 10;
-        const ROWS = 20;
-        const BLOCK_SIZE = 30;
-        let cellSize;
-        let nextCellSize;
+                this.score = 0;
+                this.highScore = localStorage.getItem('tetrisHighScore') || 0;
+                this.level = 1;
+                this.lines = 0;
+                this.dropInterval = 1000;
+                this.lastTime = 0;
+                this.isGameOver = false;
+                this.isGameStarted = false;
 
-        let score = 0;
-        let highScore = localStorage.getItem('tetrisHighScore') || 0;
-        let level = 1;
-        let lines = 0;
-        let gameLoop;
-        let dropCounter = 0;
-        let dropInterval = 1000;
-        let lastTime = 0;
-        let isGameOver = false;
-        let isGameStarted = false;
-
-        const COLORS = [
-            null,
-            '#FF0D72',
-            '#0DC2FF',
-            '#0DFF72',
-            '#F538FF',
-            '#FF8E0D',
-            '#FFE138',
+                this.COLORS = [
+                    null,
+                    '#FF0D72',
+                    '#0DC2FF',
+                    '#0DFF72',
+                    '#F538FF',
+                    '#FF8E0D',
+                    '#FFE138',
             '#3877FF'
         ];
 
-        const SHAPES = [
-            null,
-            [[1, 1, 1, 1]],
-            [[2, 2], [2, 2]],
-            [[3, 3, 3], [0, 3, 0]],
-            [[4, 4, 4], [4, 0, 0]],
-            [[5, 5, 5], [0, 0, 5]],
-            [[6, 6, 0], [0, 6, 6]],
-            [[0, 7, 7], [7, 7, 0]]
-        ];
+                this.SHAPES = [
+                    null,
+                    [[1, 1, 1, 1]],
+                    [[2, 2], [2, 2]],
+                    [[3, 3, 3], [0, 3, 0]],
+                    [[4, 4, 4], [4, 0, 0]],
+                    [[5, 5, 5], [0, 0, 5]],
+                    [[6, 6, 0], [0, 6, 6]],
+                    [[0, 7, 7], [7, 7, 0]]
+                ];
 
-        let player = {
-            pos: {x: 0, y: 0},
-            matrix: null,
-            score: 0
-        };
-
-        let arena = createMatrix(COLS, ROWS);
-        let nextPiece = null;
-
-        function createMatrix(w, h) {
-            const matrix = [];
-            while (h--) {
-                matrix.push(new Array(w).fill(0));
-            }
-            return matrix;
-        }
-
-        function createPiece(type) {
-            return SHAPES[type];
-        }
-
-        function drawMatrix(matrix, offset, context, cellSize) {
-            matrix.forEach((row, y) => {
-                row.forEach((value, x) => {
-                    if (value !== 0) {
-                        context.fillStyle = COLORS[value];
-                        context.fillRect(x * cellSize + offset.x, y * cellSize + offset.y, cellSize - 1, cellSize - 1);
-                    }
-                });
-            });
-        }
-
-        function draw() {
-            // Clear canvas
-            ctx.fillStyle = '#1a1a1a';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            nextCtx.fillStyle = '#1a1a1a';
-            nextCtx.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
-
-            // Draw arena
-            drawMatrix(arena, {x: 0, y: 0}, ctx, cellSize);
-            
-            // Draw player
-            if (player.matrix) {
-                drawMatrix(player.matrix, player.pos, ctx, cellSize);
-            }
-
-            // Draw next piece
-            if (nextPiece) {
-                const offset = {
-                    x: (nextCanvas.width - nextPiece[0].length * nextCellSize) / 2,
-                    y: (nextCanvas.height - nextPiece.length * nextCellSize) / 2
+                this.player = {
+                    pos: {x: 0, y: 0},
+                    matrix: null
                 };
-                drawMatrix(nextPiece, offset, nextCtx, nextCellSize);
-            }
-        }
 
-        function merge(arena, player) {
-            player.matrix.forEach((row, y) => {
+                this.arena = this.createMatrix(this.COLS, this.ROWS);
+                this.nextPiece = null;
+
+                this.gameLoop = null;
+                this.dropTimer = null;
+
+                this.init();
+            }
+
+            init() {
+                this.resizeCanvas();
+                this.setupEventListeners();
+                this.start();
+            }
+
+            resizeCanvas() {
+                const containerWidth = this.canvas.parentElement.clientWidth;
+                this.canvas.width = containerWidth;
+                this.canvas.height = containerWidth * 2;
+                this.cellSize = this.canvas.width / this.COLS;
+                this.nextCellSize = this.nextCanvas.width / 4;
+            }
+
+            createMatrix(w, h) {
+                const matrix = [];
+                while (h--) {
+                    matrix.push(new Array(w).fill(0));
+                }
+                return matrix;
+            }
+
+            createPiece(type) {
+                return this.SHAPES[type];
+            }
+
+            drawMatrix(matrix, offset, context, cellSize) {
+                matrix.forEach((row, y) => {
+                    row.forEach((value, x) => {
+                        if (value !== 0) {
+                            context.fillStyle = this.COLORS[value];
+                            context.fillRect(x * cellSize + offset.x, y * cellSize + offset.y, cellSize - 1, cellSize - 1);
+                        }
+                    });
+                });
+            }
+
+            draw() {
+                // Clear canvas
+                this.ctx.fillStyle = '#1a1a1a';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                this.nextCtx.fillStyle = '#1a1a1a';
+                this.nextCtx.fillRect(0, 0, this.nextCanvas.width, this.nextCanvas.height);
+
+                // Draw arena
+                this.drawMatrix(this.arena, {x: 0, y: 0}, this.ctx, this.cellSize);
+                
+                // Draw player
+                if (this.player.matrix) {
+                    this.drawMatrix(this.player.matrix, this.player.pos, this.ctx, this.cellSize);
+                }
+
+                // Draw next piece
+                if (this.nextPiece) {
+                    const offset = {
+                        x: (this.nextCanvas.width - this.nextPiece[0].length * this.nextCellSize) / 2,
+                        y: (this.nextCanvas.height - this.nextPiece.length * this.nextCellSize) / 2
+                    };
+                    this.drawMatrix(this.nextPiece, offset, this.nextCtx, this.nextCellSize);
+                }
+            }
+
+            merge() {
+                this.player.matrix.forEach((row, y) => {
                 row.forEach((value, x) => {
-                    if (value !== 0) {
-                        arena[y + player.pos.y][x + player.pos.x] = value;
+                        if (value !== 0) {
+                            this.arena[y + this.player.pos.y][x + this.player.pos.x] = value;
                     }
                 });
             });
         }
 
-        function rotate(matrix, dir) {
-            for (let y = 0; y < matrix.length; ++y) {
-                for (let x = 0; x < y; ++x) {
-                    [
-                        matrix[x][y],
-                        matrix[y][x],
-                    ] = [
-                        matrix[y][x],
-                        matrix[x][y],
-                    ];
+            rotate(matrix, dir) {
+                for (let y = 0; y < matrix.length; ++y) {
+                    for (let x = 0; x < y; ++x) {
+                        [
+                            matrix[x][y],
+                            matrix[y][x],
+                        ] = [
+                            matrix[y][x],
+                            matrix[x][y],
+                        ];
+                    }
+                }
+
+                if (dir > 0) {
+                    matrix.forEach(row => row.reverse());
+                } else {
+                    matrix.reverse();
                 }
             }
 
-            if (dir > 0) {
-                matrix.forEach(row => row.reverse());
-            } else {
-                matrix.reverse();
-            }
-        }
-
-        function playerRotate(dir) {
-            const pos = player.pos.x;
-            let offset = 1;
-            rotate(player.matrix, dir);
-            while (collide(arena, player)) {
-                player.pos.x += offset;
-                offset = -(offset + (offset > 0 ? 1 : -1));
-                if (offset > player.matrix[0].length) {
-                    rotate(player.matrix, -dir);
-                    player.pos.x = pos;
-                    return;
-                }
-            }
-        }
-
-        function playerDrop() {
-            player.pos.y++;
-            if (collide(arena, player)) {
-                player.pos.y--;
-                merge(arena, player);
-                playerReset();
-                arenaSweep();
-                updateScore();
-            }
-        }
-
-        function playerMove(dir) {
-            player.pos.x += dir;
-            if (collide(arena, player)) {
-                player.pos.x -= dir;
-            }
-        }
-
-        function collide(arena, player) {
-            const [m, o] = [player.matrix, player.pos];
-            for (let y = 0; y < m.length; ++y) {
-                for (let x = 0; x < m[y].length; ++x) {
-                    if (m[y][x] !== 0 &&
-                        (arena[y + o.y] &&
-                        arena[y + o.y][x + o.x]) !== 0) {
-                        return true;
+            playerRotate(dir) {
+                const pos = this.player.pos.x;
+                let offset = 1;
+                this.rotate(this.player.matrix, dir);
+                while (this.collide()) {
+                    this.player.pos.x += offset;
+                    offset = -(offset + (offset > 0 ? 1 : -1));
+                    if (offset > this.player.matrix[0].length) {
+                        this.rotate(this.player.matrix, -dir);
+                        this.player.pos.x = pos;
+                        return;
                     }
                 }
             }
-            return false;
-        }
 
-        function playerReset() {
-            const pieces = 'TJLOSZI';
-            if (!nextPiece) {
-                nextPiece = createPiece(pieces.charCodeAt(Math.floor(Math.random() * pieces.length)) - 64);
+            drop() {
+                this.player.pos.y++;
+                if (this.collide()) {
+                    this.player.pos.y--;
+                    this.merge();
+                    this.playerReset();
+                    this.arenaSweep();
+                    this.updateScore();
+                }
             }
-            player.matrix = nextPiece;
-            nextPiece = createPiece(pieces.charCodeAt(Math.floor(Math.random() * pieces.length)) - 64);
-            player.pos.y = 0;
-            player.pos.x = Math.floor(arena[0].length / 2) - Math.floor(player.matrix[0].length / 2);
-            if (collide(arena, player)) {
-                gameOver();
-            }
-        }
 
-        function arenaSweep() {
-            let rowCount = 1;
-            outer: for (let y = arena.length - 1; y > 0; --y) {
-                for (let x = 0; x < arena[y].length; ++x) {
-                    if (arena[y][x] === 0) {
-                        continue outer;
+            move(dir) {
+                this.player.pos.x += dir;
+                if (this.collide()) {
+                    this.player.pos.x -= dir;
+                }
+            }
+
+            collide() {
+                const [m, o] = [this.player.matrix, this.player.pos];
+                for (let y = 0; y < m.length; ++y) {
+                    for (let x = 0; x < m[y].length; ++x) {
+                        if (m[y][x] !== 0 &&
+                            (this.arena[y + o.y] &&
+                            this.arena[y + o.y][x + o.x]) !== 0) {
+                            return true;
+                        }
                     }
                 }
-                const row = arena.splice(y, 1)[0].fill(0);
-                arena.unshift(row);
-                ++y;
-                score += rowCount * 100;
-                rowCount *= 2;
-                lines++;
-                if (lines % 10 === 0) {
-                    level++;
-                    dropInterval = Math.max(100, 1000 - (level - 1) * 100);
+                return false;
+            }
+
+            playerReset() {
+                const pieces = 'TJLOSZI';
+                if (!this.nextPiece) {
+                    this.nextPiece = this.createPiece(pieces.charCodeAt(Math.floor(Math.random() * pieces.length)) - 64);
+                }
+                this.player.matrix = this.nextPiece;
+                this.nextPiece = this.createPiece(pieces.charCodeAt(Math.floor(Math.random() * pieces.length)) - 64);
+                this.player.pos.y = 0;
+                this.player.pos.x = Math.floor(this.arena[0].length / 2) - Math.floor(this.player.matrix[0].length / 2);
+                if (this.collide()) {
+                    this.gameOver();
                 }
             }
-        }
 
-        function updateScore() {
-            scoreElement.textContent = score;
-            if (score > highScore) {
-                highScore = score;
-                highScoreElement.textContent = highScore;
-                localStorage.setItem('tetrisHighScore', highScore);
-            }
-            levelElement.textContent = level;
-            linesElement.textContent = lines;
-        }
-
-        function update(time = 0) {
-            if (!isGameStarted || isGameOver) {
-                draw();
-                gameLoop = requestAnimationFrame(update);
-                return;
-            }
-
-            const deltaTime = time - lastTime;
-            lastTime = time;
-
-            dropCounter += deltaTime;
-            if (dropCounter > dropInterval) {
-                playerDrop();
-                dropCounter = 0;
+            arenaSweep() {
+                let rowCount = 1;
+                outer: for (let y = this.arena.length - 1; y > 0; --y) {
+                    for (let x = 0; x < this.arena[y].length; ++x) {
+                        if (this.arena[y][x] === 0) {
+                            continue outer;
+                        }
+                    }
+                    const row = this.arena.splice(y, 1)[0].fill(0);
+                    this.arena.unshift(row);
+                    ++y;
+                    this.score += rowCount * 100;
+                    rowCount *= 2;
+                    this.lines++;
+                    if (this.lines % 10 === 0) {
+                        this.level++;
+                        this.dropInterval = Math.max(100, 1000 - (this.level - 1) * 100);
+                        if (this.dropTimer) {
+                            clearInterval(this.dropTimer);
+                            this.startDropTimer();
+                        }
+                    }
+                }
             }
 
-            draw();
-            gameLoop = requestAnimationFrame(update);
-        }
-
-        function gameOver() {
-            isGameOver = true;
-            cancelAnimationFrame(gameLoop);
-            
-            // Update highscore
-            if (score > highScore) {
-                highScore = score;
-                localStorage.setItem('tetrisHighScore', highScore);
+            updateScore() {
+                document.getElementById('score').textContent = this.score;
+                if (this.score > this.highScore) {
+                    this.highScore = this.score;
+                    document.getElementById('highScore').textContent = this.highScore;
+                    localStorage.setItem('tetrisHighScore', this.highScore);
+                }
+                document.getElementById('level').textContent = this.level;
+                document.getElementById('lines').textContent = this.lines;
             }
 
-            // Maak pop-up container
-            const popup = document.createElement('div');
-            popup.style.position = 'fixed';
-            popup.style.top = '50%';
-            popup.style.left = '50%';
-            popup.style.transform = 'translate(-50%, -50%)';
-            popup.style.backgroundColor = '#1a1a1a';
-            popup.style.padding = '20px';
-            popup.style.borderRadius = '10px';
-            popup.style.boxShadow = '0 0 20px rgba(255, 0, 0, 0.5)';
-            popup.style.textAlign = 'center';
-            popup.style.zIndex = '1000';
-            popup.style.border = '2px solid #ff0000';
-
-            // Voeg content toe
-            popup.innerHTML = `
-                <h2 style="color: #ff0000; font-family: 'Press Start 2P', cursive; margin-bottom: 20px;">GAME OVER</h2>
-                <p style="color: #ffffff; font-family: 'Press Start 2P', cursive; margin: 10px 0;">Score: ${score}</p>
-                <p style="color: #ffffff; font-family: 'Press Start 2P', cursive; margin: 10px 0;">Highscore: ${highScore}</p>
-                <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
-                    <button onclick="restartGame()" style="
-                        background-color: #ff0000;
-                        color: white;
-                        border: none;
-                        padding: 10px 20px;
-                        font-family: 'Press Start 2P', cursive;
-                        cursor: pointer;
-                        border-radius: 5px;
-                        transition: all 0.3s ease;
-                    ">Opnieuw Spelen</button>
-                    <button onclick="goToMenu()" style="
-                        background-color: #333;
-                        color: white;
-                        border: none;
-                        padding: 10px 20px;
-                        font-family: 'Press Start 2P', cursive;
-                        cursor: pointer;
-                        border-radius: 5px;
-                        transition: all 0.3s ease;
-                    ">Terug naar Menu</button>
-                </div>
-            `;
-
-            // Voeg overlay toe
-            const overlay = document.createElement('div');
-            overlay.style.position = 'fixed';
-            overlay.style.top = '0';
-            overlay.style.left = '0';
-            overlay.style.width = '100%';
-            overlay.style.height = '100%';
-            overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-            overlay.style.zIndex = '999';
-
-            // Voeg elementen toe aan de pagina
-            document.body.appendChild(overlay);
-            document.body.appendChild(popup);
-        }
-
-        function restartGame() {
-            // Verwijder pop-up en overlay
-            const popup = document.querySelector('div[style*="position: fixed"]');
-            const overlay = document.querySelector('div[style*="background-color: rgba(0, 0, 0, 0.8)"]');
-            if (popup) popup.remove();
-            if (overlay) overlay.remove();
-
-            // Start nieuw spel
-            isGameOver = false;
-            initGame();
-        }
-
-        function goToMenu() {
-            window.location.href = '../../index.html';
-        }
-
-        function initGame() {
-            // Bereken de juiste celgrootte gebaseerd op canvas grootte
-            const containerWidth = canvas.parentElement.clientWidth;
-            canvas.width = containerWidth;
-            canvas.height = containerWidth * 2;
-            cellSize = canvas.width / COLS;
-            nextCellSize = nextCanvas.width / 4;
-
-            // Reset game state
-            arena = createMatrix(COLS, ROWS);
-            score = 0;
-            level = 1;
-            lines = 0;
-            dropInterval = 1000;
-            dropCounter = 0;
-            lastTime = performance.now();
-            updateScore();
-            
-            // Initialiseer eerste stuk
-            nextPiece = null;
-            playerReset();
-            
-            isGameOver = false;
-            isGameStarted = true;
-            
-            // Start de game loop
-            if (gameLoop) {
-                cancelAnimationFrame(gameLoop);
+            update() {
+                this.draw();
+                if (!this.isGameOver && this.isGameStarted) {
+                    this.gameLoop = requestAnimationFrame(() => this.update());
+                }
             }
-            gameLoop = requestAnimationFrame(update);
-        }
 
-        // Event listeners
-        document.addEventListener('keydown', event => {
-            if (!isGameStarted || isGameOver) {
-                return;
+            startDropTimer() {
+                if (this.dropTimer) {
+                    clearInterval(this.dropTimer);
+                }
+                this.dropTimer = setInterval(() => {
+                    if (this.isGameStarted && !this.isGameOver) {
+                        this.drop();
+                    }
+                }, this.dropInterval);
             }
-            if (event.key === 'ArrowLeft') {
-                playerMove(-1);
-            } else if (event.key === 'ArrowRight') {
-                playerMove(1);
-            } else if (event.key === 'ArrowDown') {
-                playerDrop();
-            } else if (event.key === 'ArrowUp') {
-                playerRotate(1);
+
+            gameOver() {
+                this.isGameOver = true;
+                if (this.gameLoop) {
+                    cancelAnimationFrame(this.gameLoop);
+                }
+                if (this.dropTimer) {
+                    clearInterval(this.dropTimer);
+                }
+                
+                if (this.score > this.highScore) {
+                    this.highScore = this.score;
+                    localStorage.setItem('tetrisHighScore', this.highScore);
+                }
+
+                const popup = document.createElement('div');
+                popup.style.position = 'fixed';
+                popup.style.top = '50%';
+                popup.style.left = '50%';
+                popup.style.transform = 'translate(-50%, -50%)';
+                popup.style.backgroundColor = '#1a1a1a';
+                popup.style.padding = '20px';
+                popup.style.borderRadius = '10px';
+                popup.style.boxShadow = '0 0 20px rgba(255, 0, 0, 0.5)';
+                popup.style.textAlign = 'center';
+                popup.style.zIndex = '1000';
+                popup.style.border = '2px solid #ff0000';
+
+                popup.innerHTML = `
+                    <h2 style="color: #ff0000; font-family: 'Press Start 2P', cursive; margin-bottom: 20px;">GAME OVER</h2>
+                    <p style="color: #ffffff; font-family: 'Press Start 2P', cursive; margin: 10px 0;">Score: ${this.score}</p>
+                    <p style="color: #ffffff; font-family: 'Press Start 2P', cursive; margin: 10px 0;">Highscore: ${this.highScore}</p>
+                    <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
+                        <button onclick="game.restart()" style="
+                            background-color: #ff0000;
+                            color: white;
+                            border: none;
+                            padding: 10px 20px;
+                            font-family: 'Press Start 2P', cursive;
+                            cursor: pointer;
+                            border-radius: 5px;
+                            transition: all 0.3s ease;
+                        ">Opnieuw Spelen</button>
+                        <button onclick="game.goToMenu()" style="
+                            background-color: #333;
+                            color: white;
+                            border: none;
+                            padding: 10px 20px;
+                            font-family: 'Press Start 2P', cursive;
+                            cursor: pointer;
+                            border-radius: 5px;
+                            transition: all 0.3s ease;
+                        ">Terug naar Menu</button>
+                    </div>
+                `;
+
+                const overlay = document.createElement('div');
+                overlay.style.position = 'fixed';
+                overlay.style.top = '0';
+                overlay.style.left = '0';
+                overlay.style.width = '100%';
+                overlay.style.height = '100%';
+                overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+                overlay.style.zIndex = '999';
+
+                document.body.appendChild(overlay);
+                document.body.appendChild(popup);
             }
-        });
 
-        // Touch controls
-        function moveLeft() {
-            if (!isGameStarted || isGameOver) return;
-            playerMove(-1);
-        }
+            restart() {
+                const popup = document.querySelector('div[style*="position: fixed"]');
+                const overlay = document.querySelector('div[style*="background-color: rgba(0, 0, 0, 0.8)"]');
+                if (popup) popup.remove();
+                if (overlay) overlay.remove();
 
-        function moveRight() {
-            if (!isGameStarted || isGameOver) return;
-            playerMove(1);
-        }
-
-        function rotate() {
-            if (!isGameStarted || isGameOver) return;
-            playerRotate(1);
-        }
-
-        function dropDown() {
-            if (!isGameStarted || isGameOver) return;
-            playerDrop();
-        }
-
-        // Handle window resize
-        window.addEventListener('resize', () => {
-            if (isGameStarted) {
-                initGame();
-            } else {
-                draw();
+                this.isGameOver = false;
+                this.initGame();
             }
-        });
 
-        function showStartScreen() {
-            // Maak pop-up container
-            const popup = document.createElement('div');
-            popup.style.position = 'fixed';
-            popup.style.top = '50%';
-            popup.style.left = '50%';
-            popup.style.transform = 'translate(-50%, -50%)';
-            popup.style.backgroundColor = '#1a1a1a';
-            popup.style.padding = '20px';
-            popup.style.borderRadius = '10px';
-            popup.style.boxShadow = '0 0 20px rgba(255, 0, 0, 0.5)';
-            popup.style.textAlign = 'center';
-            popup.style.zIndex = '1000';
-            popup.style.border = '2px solid #ff0000';
+            goToMenu() {
+                window.location.href = '../../index.html';
+            }
 
-            // Voeg content toe
-            popup.innerHTML = `
-                <h2 style="color: #ff0000; font-family: 'Press Start 2P', cursive; margin-bottom: 20px;">TETRIS</h2>
-                <p style="color: #ffffff; font-family: 'Press Start 2P', cursive; margin: 10px 0;">Gebruik de pijltjestoetsen om te spelen</p>
-                <p style="color: #ffffff; font-family: 'Press Start 2P', cursive; margin: 10px 0;">↑ = Roteer, ↓ = Sneller, ←/→ = Bewegen</p>
-                <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
-                    <button onclick="startGame()" style="
-                        background-color: #ff0000;
-                        color: white;
-                        border: none;
-                        padding: 10px 20px;
-                        font-family: 'Press Start 2P', cursive;
-                        cursor: pointer;
-                        border-radius: 5px;
-                        transition: all 0.3s ease;
-                    ">Start Spel</button>
-                </div>
-            `;
+            initGame() {
+                this.resizeCanvas();
+                this.arena = this.createMatrix(this.COLS, this.ROWS);
+                this.score = 0;
+                this.level = 1;
+                this.lines = 0;
+                this.dropInterval = 1000;
+                this.updateScore();
+                
+                this.nextPiece = null;
+                this.playerReset();
+                
+                this.isGameOver = false;
+                this.isGameStarted = true;
+                
+                if (this.gameLoop) {
+                    cancelAnimationFrame(this.gameLoop);
+                }
+                this.gameLoop = requestAnimationFrame(() => this.update());
+                this.startDropTimer();
+            }
 
-            // Voeg overlay toe
-            const overlay = document.createElement('div');
-            overlay.style.position = 'fixed';
-            overlay.style.top = '0';
-            overlay.style.left = '0';
-            overlay.style.width = '100%';
-            overlay.style.height = '100%';
-            overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-            overlay.style.zIndex = '999';
+            showStartScreen() {
+                // Verwijderd de pop-up melding
+            }
 
-            // Voeg elementen toe aan de pagina
-            document.body.appendChild(overlay);
-            document.body.appendChild(popup);
+            start() {
+                this.isGameStarted = true;
+                this.initGame();
+            }
+
+            setupEventListeners() {
+                document.addEventListener('keydown', event => {
+                    if (!this.isGameStarted || this.isGameOver) {
+                        return;
+                    }
+                    if (event.key === 'ArrowLeft') {
+                        this.move(-1);
+                    } else if (event.key === 'ArrowRight') {
+                        this.move(1);
+                    } else if (event.key === 'ArrowDown') {
+                        this.drop();
+                    } else if (event.key === 'ArrowUp') {
+                        this.playerRotate(1);
+                    }
+                });
+
+                window.addEventListener('resize', () => {
+                    this.resizeCanvas();
+                    this.draw();
+                });
+            }
+
+            // Touch controls
+            moveLeft() {
+                if (!this.isGameStarted || this.isGameOver) return;
+                this.move(-1);
+            }
+
+            moveRight() {
+                if (!this.isGameStarted || this.isGameOver) return;
+                this.move(1);
+            }
+
+            rotate() {
+                if (!this.isGameStarted || this.isGameOver) return;
+                this.playerRotate(1);
+            }
+
+            dropDown() {
+                if (!this.isGameStarted || this.isGameOver) return;
+                this.drop();
+            }
         }
 
-        function startGame() {
-            // Verwijder pop-up en overlay
-            const popup = document.querySelector('div[style*="position: fixed"]');
-            const overlay = document.querySelector('div[style*="background-color: rgba(0, 0, 0, 0.8)"]');
-            if (popup) popup.remove();
-            if (overlay) overlay.remove();
-
-            isGameStarted = true;
-            initGame();
-        }
-
-        // Initialiseer het spel wanneer de pagina laadt
-        window.addEventListener('load', () => {
-            showStartScreen();
-        });
+        // Start het spel wanneer de pagina laadt
+        const game = new Tetris();
     </script>
 </body>
 </html> 
