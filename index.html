@@ -126,13 +126,44 @@
     <div class="games-grid">
         <a href="games/snake/index.html" class="game-card">
             <svg viewBox="0 0 100 100" class="game-icon">
+                <!-- Slang lichaam -->
                 <path d="M10,50 Q20,30 30,50 Q40,70 50,50 Q60,30 70,50 Q80,70 90,50" 
                       fill="none" 
                       stroke="#4CAF50" 
                       stroke-width="8"
-                      stroke-linecap="round"/>
-                <circle cx="85" cy="45" r="4" fill="#2E7D32"/>
-                <circle cx="85" cy="55" r="4" fill="#2E7D32"/>
+                      stroke-linecap="round">
+                    <animate attributeName="d" 
+                             values="M10,50 Q20,30 30,50 Q40,70 50,50 Q60,30 70,50 Q80,70 90,50;
+                                    M10,50 Q20,70 30,50 Q40,30 50,50 Q60,70 70,50 Q80,30 90,50;
+                                    M10,50 Q20,30 30,50 Q40,70 50,50 Q60,30 70,50 Q80,70 90,50"
+                             dur="2s"
+                             repeatCount="indefinite"/>
+                </path>
+                <!-- Ogen -->
+                <circle cx="85" cy="45" r="4" fill="#2E7D32">
+                    <animate attributeName="cy" 
+                             values="45;55;45" 
+                             dur="2s" 
+                             repeatCount="indefinite"/>
+                </circle>
+                <circle cx="85" cy="55" r="4" fill="#2E7D32">
+                    <animate attributeName="cy" 
+                             values="55;45;55" 
+                             dur="2s" 
+                             repeatCount="indefinite"/>
+                </circle>
+                <!-- Tong -->
+                <path d="M90,50 L95,45 M90,50 L95,55" 
+                      stroke="#2E7D32" 
+                      stroke-width="2"
+                      stroke-linecap="round">
+                    <animate attributeName="d" 
+                             values="M90,50 L95,45 M90,50 L95,55;
+                                    M90,50 L93,45 M90,50 L93,55;
+                                    M90,50 L95,45 M90,50 L95,55"
+                             dur="0.5s"
+                             repeatCount="indefinite"/>
+                </path>
             </svg>
             <h2>Snake</h2>
             <p>Bestuur de slang en eet het voedsel</p>
